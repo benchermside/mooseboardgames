@@ -1,0 +1,28 @@
+
+tables
+
+    user
+        user_id   (type string)
+        email  (type string)
+        username  (type string)
+        password_hash  (type string)
+        password_salt  (type string)
+        create_time  (type timestamp)
+        filter_settings
+    
+    session
+        session_id  (type string)
+
+
+    open_game
+        open_game_id  (type string)
+        game_type  (type enum)
+        settings  (type settings)
+        joined_users (type list user_id)
+
+
+
+    cookie
+        cookie_id
+        user_id
+        expire_time
