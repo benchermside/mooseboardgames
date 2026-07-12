@@ -2,7 +2,7 @@
 tables
 
     user
-        user_id   (type string)
+        user_id   (type string) (PK)
         email  (type string)
         username  (type string)
         password_hash  (type string)
@@ -11,18 +11,20 @@ tables
         filter_settings
     
     session
-        session_id  (type string)
+        session_id  (type string) (PK)
 
 
     open_game
-        open_game_id  (type string)
+    table name: moose_open_games_dev
+        open_game_id  (type string) (PK)
         game_type  (type enum)
         settings  (type settings)
         joined_users (type list user_id)
+        owner_user_id (type string)
 
 
 
     cookie
-        cookie_id
+        cookie_id (PK)
         user_id
         expire_time

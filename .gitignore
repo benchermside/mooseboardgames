@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments / uv
+.venv/
+venv/
+
+# Lambda build artifacts
+package/
+deployment.zip
+.deps-hash
+
+# Environment / secrets
+.env
+.env.*
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini

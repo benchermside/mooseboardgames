@@ -1,0 +1,94 @@
+
+
+get open games
+    PATH: /open-games
+    VERB: GET
+    DESCRIPTION: gets the list of open games including settings
+    INPUT:
+    OUTPUT:
+        list of games (json)
+
+create open game
+    PATH: /open-games
+    VERB: POST
+    DESCRIPTION: starts a new open-game
+    INPUT:
+        cookie_id (headder)
+        game_name (body) [enum]
+        settings  (body) [json]
+    OUTPUT:
+        open_game_id (body)
+
+deleate open game
+    PATH: /open-games/{open_game_id}
+    VERB: DELETE
+    DESCRIPTION: deleates an open game that you started
+    INPUT:
+        cookie_id (headder)
+        open_game_id (path)
+    OUTPUT:
+
+
+join open game
+    PATH: /open-games/{open_game_id}
+    VERB: PUT
+    DESCRIPTION: joins an open game
+    INPUT:
+        
+
+
+leave open game
+
+
+
+get online friends
+
+get friend list
+
+add friend
+
+remove friend
+
+
+
+
+
+log in
+    PATH: /account-login
+    VERB: POST
+    DESCRIPTION: logs a user in and creates a new cookie
+    INPUT
+        password
+        username
+    OUTPUT
+        cookie
+
+
+start sesion
+    PATH /start-session
+    VERB: POST
+    DESCRIPTION: creats a new user session that repersents the active use of the service
+    INPUT
+        cookie_id
+    OUTPUT
+        session_id
+
+
+create user
+    PATH: /account-signup
+    VERB: POST
+    DESCRIPTION: creates a new user if username is not in use. If created, also returns a new cookie.
+    INPUT
+        username (body) [ allows "a-zA-Z0-9_ " max size 20 characters cant start or end with space]
+        email    (body) 
+        password (body) [8-64 characters]
+    OUTPUT
+        session cookie
+
+log out
+    PATH: /account-logout
+    VERB: POST
+    DESCRIPTION: logs you out of your account, ending your login cookie and your session.
+    INPUT:
+        cookie_id
+        session_id
