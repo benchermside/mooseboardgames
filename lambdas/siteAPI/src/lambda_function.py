@@ -46,11 +46,15 @@ def _match_route(method: str, path: str) -> tuple[Callable | None, dict]:
 
 
 def lambda_handler(event: dict, context) -> dict:
-    method = event.get("httpMethod", "")
-    path = event.get("path", "")
+    print("start file")
+    print("entered lambda handler")
+    http = event.get("requestContext", {}).get("http", {})
+    method = http.get("method", "")
+    path = http.get("path", "")
+    print("the method is", method, "the path is", path)
     handler, path_params = _match_route(method, path)
     if handler is None:
-        return _response(404, {"error": "Not found"})
+        return _response(404, {"error": "Not found!!"})
     try:
         return handler(event, path_params)
     except Exception as exc:

@@ -2,7 +2,7 @@ import json
 
 from db import get_connection
 
-OPEN_GAMES_TABLE_NAME = "moose.open_games.dev"
+OPEN_GAMES_TABLE_NAME = "mooseboardgames-open_games-dev"
 
 def _ok(body: dict) -> dict:
     return {"statusCode": 200, "headers": {"Content-Type": "application/json"}, "body": json.dumps(body)}

@@ -1,7 +1,7 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 site_api := "lambdas/siteAPI"
-site_api_function_name := "mooseboardgames-siteAPI.dev"
+site_api_function_name := "mooseboardgames-siteAPI-dev"
 
 # List just commands
 default:

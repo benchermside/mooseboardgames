@@ -3,7 +3,7 @@
 Usage: python build_zip.py <output.zip> <src_dir> [<src_dir> ...]
 
 Zips the *contents* of each source directory into the archive root (so
-handler.py and the dependency packages all land at the top level, as the
+lambda_function.py and the dependency packages all land at the top level, as the
 Lambda runtime expects). Much faster than PowerShell's Compress-Archive on
 trees with many small files (e.g. botocore).
 """
