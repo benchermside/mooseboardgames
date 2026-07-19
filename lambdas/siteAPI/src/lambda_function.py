@@ -1,4 +1,5 @@
 import json
+import traceback
 from typing import Callable
 
 from routes import open_games, account, session
@@ -46,18 +47,21 @@ def _match_route(method: str, path: str) -> tuple[Callable | None, dict]:
 
 
 def lambda_handler(event: dict, context) -> dict:
-    print("start file")
-    print("entered lambda handler")
-    http = event.get("requestContext", {}).get("http", {})
-    method = http.get("method", "")
-    path = http.get("path", "")
-    print("the method is", method, "the path is", path)
-    handler, path_params = _match_route(method, path)
-    if handler is None:
-        return _response(404, {"error": "Not found!!"})
     try:
+        print("start file")
+        print("entered lambda handler")
+        http = event.get("requestContext", {}).get("http", {})
+        method = http.get("method", "")
+        path = http.get("path", "")
+        print("the method is", method, "the path is", path)
+        handler, path_params = _match_route(method, path)
+        if handler is None:
+            return _response(404, {"error": "Not found!!"})
         return handler(event, path_params)
     except Exception as exc:
+        # Log the full stack trace as ONE CloudWatch entry. CloudWatch starts a
+        # new log event on each newline, so swap "\n" for "\r" to keep it together.
+        print(traceback.format_exc().replace("\n", "\r"))
         return _response(500, {"error": str(exc)})
 
 

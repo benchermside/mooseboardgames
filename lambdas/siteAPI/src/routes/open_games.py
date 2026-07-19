@@ -1,10 +1,11 @@
 import json
 
-from db import get_connection
+from db import get_connection, extract_from_type_dict, extract_from_type_list, DDB_dict_to_json
+
 
 OPEN_GAMES_TABLE_NAME = "mooseboardgames-open_games-dev"
 
-def _ok(body: dict) -> dict:
+def _ok(body: dict|list) -> dict:
     return {"statusCode": 200, "headers": {"Content-Type": "application/json"}, "body": json.dumps(body)}
 
 
@@ -14,11 +15,8 @@ def get_open_games(event: dict, path_params: dict) -> dict:
     response = dynamodb.scan(
         TableName=OPEN_GAMES_TABLE_NAME,
     )
-    # FIXME need to deal with scan exceptions 
-    for item in response["Items"]:
-        print(item)
-        #FIXME impliment
-    return _ok([])
+    body = [DDB_dict_to_json(x) for x in response["Items"]]
+    return _ok(body)
 
 
 def create_open_game(event: dict, path_params: dict) -> dict:
