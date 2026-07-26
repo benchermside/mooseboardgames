@@ -2,6 +2,7 @@ import json
 import traceback
 from typing import Callable
 
+from http_utils import BadRequest, Unauthorized
 from routes import open_games, account, session
 
 
@@ -58,6 +59,10 @@ def lambda_handler(event: dict, context) -> dict:
         if handler is None:
             return _response(404, {"error": "Not found!!"})
         return handler(event, path_params)
+    except BadRequest as exc:
+        return _response(400, {"error": str(exc)})
+    except Unauthorized as exc:
+        return _response(401, {"error": str(exc)})
     except Exception as exc:
         # Log the full stack trace as ONE CloudWatch entry. CloudWatch starts a
         # new log event on each newline, so swap "\n" for "\r" to keep it together.

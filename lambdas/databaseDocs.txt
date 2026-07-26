@@ -15,9 +15,8 @@ tables
 
 
     open_game
-    table name: moose_open_games_dev
         open_game_id  (type string) (PK)
-        game_type  (type enum)
+        game_name  (type enum)
         settings  (type settings)
         joined_users (type list user_id)
         owner_user_id (type string)

@@ -48,7 +48,7 @@ def extract_from_type_dict(type_dict):
     elif k == 'B':
         raise ValueError("byte data not supported")
     elif k == 'SS':
-        raise ValueError("string set not supported")
+        return v
     elif k == 'NS':
         raise ValueError("number set not supported")
     elif k == 'BS':
@@ -62,7 +62,7 @@ def extract_from_type_dict(type_dict):
     elif k == 'BOOL':
         return v
     else:
-        ValueError("type_dict not in correct format")
+        raise ValueError("type_dict not in correct format")
 
 def extract_from_type_list(type_list):
     """Takes a boto3 typelist and returns the value as the correct type
@@ -70,3 +70,29 @@ def extract_from_type_list(type_list):
     """
     print("extract_from_type_list input", type_list)
     return [extract_from_type_dict(x) for x in type_list]
+
+def json_to_DDB_dict(json):
+    """Creates a DDB_dict from a python json dict.
+    Currently does not support "L" type.
+    """
+    return {key:transform_to_type_dict(json[key]) for key in json}
+
+
+def transform_to_type_dict(data): 
+    """Transforms the data to a type dict, for example "hi" -> {"S":"hi"}
+    Currently does not support types "L" and "M",
+    could be added in future with new optional parameter.
+    """
+    data_type = type(data)
+    if data_type == str:
+        return {"S":data}
+    elif data_type == int or data_type == Decimal:
+        return {"N":str(data)}
+    elif data_type == list and all(type(elem) == str for elem in data):
+        return {"SS":data}
+    elif data_type == type(None):
+        return {"NULL":None}
+    elif data_type == bool:
+        return {"BOOL":data}
+    else:
+        raise ValueError(f"Data type {data_type} not supported. the data value is {data}.")
