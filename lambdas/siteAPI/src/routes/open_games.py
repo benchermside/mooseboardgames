@@ -1,7 +1,7 @@
 import json
 
 from db import get_connection, extract_from_type_dict, extract_from_type_list, DDB_dict_to_json, json_to_DDB_dict
-from http_utils import parse_json_body
+from http_utils import parse_json_body, BadRequest, Unauthorized
 from util import create_id
 
 OPEN_GAMES_TABLE_NAME = "mooseboardgames-open_games-dev"
@@ -48,11 +48,83 @@ def create_open_game(event: dict, path_params: dict) -> dict:
 
 
 def delete_open_game(event: dict, path_params: dict) -> dict:
-
-    # TODO: delete open_game_id from DB
-    return _ok({"message": "deleted"})
+    dynamodb = get_connection()
+    user_id = "u_123456789" #FIXME should authenticate user
+    target_game = path_params["open_game_id"]
+    try:
+        response = dynamodb.delete_item(
+            TableName=OPEN_GAMES_TABLE_NAME,
+            Key={"open_game_id": {"S": target_game}},
+            ConditionExpression="owner_user_id = :uid",
+            ExpressionAttributeValues={":uid": {"S": user_id}},
+        )
+    except dynamodb.exceptions.ConditionalCheckFailedException:
+        raise Unauthorized("You are not the owner of that game.")
+    return _ok({"message": f"deleted game {target_game}"})
 
 
 def join_open_game(event: dict, path_params: dict) -> dict:
-    # TODO: add user to open_game_id in DB
+    dynamodb = get_connection()
+    user_id = "u_2" #FIXME should authenticate user
+    target_game = path_params["open_game_id"]
+    response = dynamodb.get_item(
+        TableName=OPEN_GAMES_TABLE_NAME,
+        Key={"open_game_id": {"S": target_game}},
+        ProjectionExpression="joined_users, settings",
+    )
+    item = response.get("Item")
+    if item is None:
+        raise BadRequest(f"There is no open game with id {target_game}.")
+    open_game = DDB_dict_to_json(item)
+
+    current_players = open_game["joined_users"]
+    if user_id in current_players:
+        return _ok({"message": "alreadyInGame"})
+
+    player_count = json.loads(open_game["settings"])["playerCount"]
+    if len(current_players) >= player_count:
+        return _ok({"message": "gameFull"})
+
+    # TODO: this read-then-write has a race: two players can both see room in
+    #   the game and both join, overfilling it. Fix later, probably with a
+    #   ConditionExpression on size(joined_users) in the update below.
+    dynamodb.update_item(
+        TableName=OPEN_GAMES_TABLE_NAME,
+        Key={"open_game_id": {"S": target_game}},
+        UpdateExpression="ADD joined_users :uid",
+        ExpressionAttributeValues={":uid": {"SS": [user_id]}},
+    )
     return _ok({"message": "joined"})
+
+
+def leave_open_game(event: dict, path_params: dict) -> dict:
+    dynamodb = get_connection()
+    user_id = "u_2" #FIXME should authenticate user
+    target_game = path_params["open_game_id"]
+    response = dynamodb.get_item(
+        TableName=OPEN_GAMES_TABLE_NAME,
+        Key={"open_game_id": {"S": target_game}},
+        ProjectionExpression="owner_user_id",
+    )
+    item = response.get("Item")
+    if item is None:
+        raise BadRequest(f"There is no open game with id {target_game}.")
+    if DDB_dict_to_json(item)["owner_user_id"] == user_id:
+        raise BadRequest("The owner cannot leave their own game, only delete it.")
+
+    try:
+        dynamodb.update_item(
+            TableName=OPEN_GAMES_TABLE_NAME,
+            Key={"open_game_id": {"S": target_game}},
+            UpdateExpression="DELETE joined_users :uid_set",
+            ConditionExpression="contains(joined_users, :uid)",
+            ExpressionAttributeValues={
+                ":uid_set": {"SS": [user_id]},  # DELETE needs a set
+                ":uid": {"S": user_id},         # contains() needs a scalar
+            },
+        )
+    except dynamodb.exceptions.ConditionalCheckFailedException:
+        return _ok({"message": "notInGame"})
+    return _ok({"message": "left"})
+
+

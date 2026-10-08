@@ -34,11 +34,20 @@ join open game
     VERB: PUT
     DESCRIPTION: joins an open game
     INPUT:
+        cookie_id (headder)
+        open_game_id (path)
+    OUTPUT:
+        
         
 
 
 leave open game
-
+    PATH: /open-games/leave/{open_game_id}
+    VERB: PUT
+    DESCRIPTION: leave an open game
+    INPUT:
+        cookie_id (headder)
+        open_game_id (path)
 
 
 get online friends
