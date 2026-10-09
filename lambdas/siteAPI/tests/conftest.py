@@ -16,6 +16,7 @@ os.environ.pop("AWS_PROFILE", None)
 
 import db
 from http_utils import COOKIE_TABLE_NAME
+from routes.account_lambda import USERS_TABLE_NAME, USERNAMES_TABLE_NAME
 from routes.open_games import OPEN_GAMES_TABLE_NAME
 
 
@@ -37,5 +38,7 @@ def dynamodb():
         client = boto3.client("dynamodb")
         _create_table(client, OPEN_GAMES_TABLE_NAME, "open_game_id")
         _create_table(client, COOKIE_TABLE_NAME, "cookie_id")
+        _create_table(client, USERS_TABLE_NAME, "user_id")
+        _create_table(client, USERNAMES_TABLE_NAME, "username")
         yield client
         db._connection = None

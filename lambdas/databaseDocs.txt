@@ -9,7 +9,11 @@ tables
         password_salt  (type string)
         create_time  (type timestamp)
         filter_settings
-    
+
+    username
+        username  (type string) (PK) [case sensitive]
+        user_id  (type string)
+
     session
         session_id  (type string) (PK)
 

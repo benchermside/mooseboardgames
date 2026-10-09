@@ -88,7 +88,7 @@ create user
     VERB: POST
     DESCRIPTION: creates a new user if username is not in use. If created, also returns a new cookie.
     INPUT
-        username (body) [ allows "a-zA-Z0-9_ " max size 20 characters cant start or end with space]
+        username (body) [ allows "a-zA-Z0-9_ " 2-20 characters cant start or end with space]
         email    (body) 
         password (body) [8-64 characters]
     OUTPUT

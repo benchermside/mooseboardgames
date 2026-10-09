@@ -3,7 +3,7 @@ import traceback
 from typing import Callable
 
 from http_utils import BadRequest, Unauthorized
-from routes import open_games, account, session
+from routes import open_games, account_lambda, session
 
 
 def _response(status_code: int, body: dict) -> dict:
@@ -20,9 +20,9 @@ _ROUTES: dict[tuple[str, str], Callable] = {
     ("DELETE", "/open-games/{open_game_id}"): open_games.delete_open_game,
     ("PUT",    "/open-games/{open_game_id}"): open_games.join_open_game,
     ("PUT",    "/open-games/leave/{open_game_id}"): open_games.leave_open_game,
-    ("POST",   "/account-login"):             account.login,
-    ("POST",   "/account-signup"):            account.signup,
-    ("POST",   "/account-logout"):            account.logout,
+    ("POST",   "/account-login"):             account_lambda.login,
+    ("POST",   "/account-signup"):            account_lambda.create_user,
+    ("POST",   "/account-logout"):            account_lambda.logout,
     ("POST",   "/start-session"):             session.start_session,
 }
 
