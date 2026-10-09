@@ -6,20 +6,21 @@
         <title>Moose Board Games</title>
         <link rel="stylesheet" href="mooseboardgames.css">
         <script src="callAPI.js"></script>
+        <script src="index.js" defer></script>
     </head>
     <body>
         <header>Moose Board Games</header>
         <main>
-            <button>Create Game</button>
-            <div class="open-game">
-                <div class="game-name">Connect 4</div>
-                <div class="player-count">1 of 2 Players</div>
-                <button>Join</button>
-            </div>
-            <div class="open-game">
-                <div class="game-name">Connect 4</div>
-                <div class="player-count">3 of 4 Players</div>
-                <button>Join</button>
+            <div id="view-games-lobby">
+                <button>Create Game</button>
+                <div id="open-games"></div>
+                <template id="open-game-template">
+                    <div class="open-game">
+                        <div class="game-name"></div>
+                        <div class="player-count"></div>
+                        <button>Join</button>
+                    </div>
+                </template>
             </div>
         </main>
         <footer>&copy; 2026 Ben Chermside</footer>
