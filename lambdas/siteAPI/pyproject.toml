@@ -8,5 +8,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "moto[dynamodb]>=5",
     "pytest>=8.0",
 ]
