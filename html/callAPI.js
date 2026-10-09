@@ -5,8 +5,12 @@
 // the caller checks ok (or status) and decides what to do about them. On an
 // error the lambda puts a human-readable message in body.error.
 
-// FIXME: point this at the real API Gateway URL (no trailing slash).
-const API_BASE_URL = "https://example.execute-api.us-east-1.amazonaws.com";
+// When the page is served locally (see local/README.md), talk to the local
+// gateway; otherwise talk to the real API (no trailing slash).
+// FIXME: point the non-local URL at the real API Gateway URL.
+const API_BASE_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "http://localhost:3000"
+    : "https://example.execute-api.us-east-1.amazonaws.com";
 
 
 /**

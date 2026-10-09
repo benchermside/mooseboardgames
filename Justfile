@@ -2,10 +2,23 @@ set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 site_api := "lambdas/siteAPI"
 site_api_function_name := "mooseboardgames-siteAPI-dev"
+compose := "docker compose -f local/compose.yaml"
 
 # List just commands
 default:
     @just --list
+
+# Run the whole site locally: site on :8080, API on :3000, DynamoDB on :8000 (Ctrl+C to stop)
+dev:
+    {{compose}} up --build --watch
+
+# Stop and remove the local containers (local data is kept)
+down:
+    {{compose}} down
+
+# Put the local DynamoDB tables back to just the sample data
+db-reset:
+    {{compose}} run --rm db-init python local_db.py --reset
 
 # Run all tests
 test:
@@ -13,12 +26,8 @@ test:
 
 # Package src/ + dependencies into deployment.zip for Lambda upload
 build:
-    cd {{site_api}}; $hash = (Get-FileHash uv.lock -Algorithm SHA256).Hash; if ((Test-Path package/.deps-hash) -and ((Get-Content package/.deps-hash) -eq $hash)) { Write-Host "Dependencies unchanged, skipping install" } else { if (Test-Path package) { Remove-Item -Recurse -Force package }; $deps = uv export --no-dev --no-hashes --no-emit-project --frozen | Where-Object { $_ -match "^[A-Za-z0-9].*==" -and $_ -notmatch "^(boto3|botocore|s3transfer|jmespath)==" }; if ($deps) { uv pip install --target package $deps } else { New-Item -ItemType Directory -Force package | Out-Null }; Set-Content package/.deps-hash $hash }
-    cd {{site_api}}; if (Test-Path deployment.zip) { Remove-Item deployment.zip }
-    cd {{site_api}}; uv run python build_zip.py deployment.zip package src
-    cd {{site_api}}; Write-Host "Built deployment.zip"
+    uv run --no-project python deploy/build.py
 
 # Build siteAPI and upload deployment.zip to the Lambda function
 deploy: build
     cd {{site_api}}; aws lambda update-function-code --function-name {{site_api_function_name}} --zip-file fileb://deployment.zip
-
