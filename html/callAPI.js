@@ -59,7 +59,8 @@ async function callAPI(method, path, body) {
  * Get the list of all open games.
  *
  * On success body is a list of open-game objects, each with open_game_id,
- * game_name, settings, joined_users, and owner_user_id.
+ * game_name, settings, joined_users, and owner_user_id. Note that settings is
+ * a JSON-encoded string, not an object.
  */
 async function getOpenGames() {
     return await callAPI("GET", "/open-games");

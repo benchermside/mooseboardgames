@@ -13,6 +13,7 @@
         <main>
             <div id="view-games-lobby">
                 <button>Create Game</button>
+                <div id="join-game-error-message"></div>
                 <div id="open-games"></div>
                 <template id="open-game-template">
                     <div class="open-game">
@@ -21,6 +22,10 @@
                         <button>Join</button>
                     </div>
                 </template>
+            </div>
+            <div id="starting-game-lobby" hidden>
+                <div class="game-name"></div>
+                <div class="player"></div>
             </div>
         </main>
         <footer>&copy; 2026 Ben Chermside</footer>
