@@ -1,0 +1,28 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Page layout: header and footer size to their content; main fills the rest. */
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+header, footer {
+    flex: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+header {
+    font-size: 2rem;
+}
+
+main {
+    flex: 1;
+    min-height: 0; /* allow main to shrink below its content so it can scroll */
+    overflow: auto;
+}
