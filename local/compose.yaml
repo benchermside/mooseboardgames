@@ -1,0 +1,64 @@
+# The whole site running locally. Start it with `just dev` from the repo root
+# (or `docker compose -f local/compose.yaml up --build --watch`).
+#
+#   http://localhost:8080   the static site (stands in for S3)
+#   http://localhost:3000   the API (stands in for API Gateway + the siteAPI Lambda)
+#   http://localhost:8000   DynamoDB Local
+name: mooseboardgames
+
+x-dummy-aws: &dummy-aws
+  # DynamoDB Local accepts any credentials, but boto3 insists on having some.
+  AWS_ACCESS_KEY_ID: local
+  AWS_SECRET_ACCESS_KEY: local
+  AWS_REGION: us-east-1
+  DYNAMODB_ENDPOINT_URL: http://dynamodb:8000
+
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    command: -jar DynamoDBLocal.jar -sharedDb -dbPath ./data
+    working_dir: /home/dynamodblocal
+    user: root  # so it can write to the named volume
+    ports:
+      - "8000:8000"
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+
+  # Creates (and on first creation, seeds) the tables, then exits.
+  db-init:
+    build: db
+    environment: *dummy-aws
+    depends_on:
+      - dynamodb
+
+  # The siteAPI Lambda, run in AWS's Lambda base image. The image includes the
+  # Runtime Interface Emulator, which accepts invocations on port 8080.
+  lambda:
+    build:
+      context: ..
+      dockerfile: local/lambda/Dockerfile
+    environment: *dummy-aws
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    develop:
+      watch:
+        - path: ../lambdas/siteAPI/src
+          target: /var/task
+          action: sync+restart
+
+  # Serves html/ and turns HTTP requests into Lambda invocations.
+  gateway:
+    build: gateway
+    environment:
+      LAMBDA_URL: http://lambda:8080/2015-03-31/functions/function/invocations
+    ports:
+      - "8080:8080"
+      - "3000:3000"
+    volumes:
+      - ../html:/site:ro
+    depends_on:
+      - lambda
+
+volumes:
+  dynamodb-data:
