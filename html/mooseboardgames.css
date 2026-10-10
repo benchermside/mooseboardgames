@@ -44,12 +44,16 @@ button {
     margin: 0.5rem 0;
 }
 
-/* Starting-game lobby: title and error across the top, then players (left) and content (right). */
-#starting-game-lobby {
+/* Both lobby views share the same centered, bordered box. */
+#view-games-lobby, #starting-game-lobby {
     border: 2px solid black;
     padding: 0.5rem;
     max-width: 50rem;
     margin: 0 auto;
+}
+
+/* Starting-game lobby: title and error across the top, then players (left) and content (right). */
+#starting-game-lobby {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-areas:
