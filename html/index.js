@@ -1,5 +1,5 @@
 // Page logic for index.html: shows the list of open games, and switches to
-// the starting-game lobby when the user joins one.
+// the starting-game lobby when the user joins one (and back when they leave).
 //
 // Relies on callAPI.js having been loaded first.
 
@@ -21,43 +21,12 @@ function gameDisplayName(openGame) {
 
 
 /**
- * Build the element for one open game, from the open-game-template in
- * index.html.
- */
-function makeOpenGameElement(openGame) {
-    const templateElem = document.getElementById("open-game-template");
-    const elementElem = templateElem.content.firstElementChild.cloneNode(true);
-    const joinedCount = openGame.joined_users.length;
-    const playerCount = openGame.parsed_settings.playerCount;
-    elementElem.querySelector(".game-name").textContent = gameDisplayName(openGame);
-    elementElem.querySelector(".player-count").textContent = `${joinedCount} of ${playerCount} Players`;
-    elementElem.querySelector("button").addEventListener("click", () => joinGame(openGame));
-    return elementElem;
-}
-
-
-/**
  * Return a copy of an open game from the API with a parsed_settings field
  * added. The API sends settings as a JSON-encoded string; parsed_settings is
  * that string decoded.
  */
 function withParsedSettings(openGame) {
     return {...openGame, parsed_settings: JSON.parse(openGame.settings)};
-}
-
-
-/**
- * Fetch the open games from the API and show one entry for each.
- */
-async function showOpenGames() {
-    const containerElem = document.getElementById("open-games");
-    const response = await getOpenGames();
-    if (!response.ok) {
-        containerElem.textContent = `Could not load open games: ${response.body?.error ?? response.status}`;
-        return;
-    }
-    const openGames = response.body.map(withParsedSettings);
-    containerElem.replaceChildren(...openGames.map(makeOpenGameElement));
 }
 
 
@@ -97,6 +66,26 @@ async function joinGame(openGame) {
 
 
 /**
+ * Leave the game whose lobby is showing through the API. If that works, go
+ * back to a refreshed list of open games; otherwise stay in the lobby and say
+ * why.
+ */
+async function leaveGame() {
+    const errorMessageElem = document.getElementById("leave-game-error-message");
+    const openGame = lobbyState.selectedOpenGame;
+    const response = await leaveOpenGame(openGame.open_game_id);
+    if (!response.ok) {
+        errorMessageElem.textContent = `Could not leave game: ${response.body?.error ?? response.status}`;
+        return;
+    }
+    // "left" or "notInGame"
+    errorMessageElem.textContent = "";
+    lobbyState.selectedOpenGame = null;
+    showViewGamesLobby();
+}
+
+
+/**
  * Build the element for one player slot in the lobby, from the
  * player-view-template in index.html. text is what to show in it.
  */
@@ -109,12 +98,48 @@ function makePlayerViewElement(player) {
 
 
 /**
+ * Show the "view games lobby" where the user views the available games and chooses one to
+ * join. Fetches the current list of open games from the API and show one entry for each.
+ */
+async function showViewGamesLobby() {
+    const containerElem = document.getElementById("open-games");
+    const response = await getOpenGames();
+    if (!response.ok) {
+        containerElem.textContent = `Could not load open games: ${response.body?.error ?? response.status}`;
+        return;
+    }
+    const openGames = response.body.map(withParsedSettings);
+    containerElem.replaceChildren(...openGames.map(makeOpenGameElement));
+
+    // Swap the display
+    document.getElementById("starting-game-lobby").hidden = true;
+    document.getElementById("view-games-lobby").hidden = false;
+}
+
+
+/**
+ * Build the element for one open game, from the open-game-template in
+ * index.html.
+ */
+function makeOpenGameElement(openGame) {
+    const templateElem = document.getElementById("open-game-template");
+    const elementElem = templateElem.content.firstElementChild.cloneNode(true);
+    const joinedCount = openGame.joined_users.length;
+    const playerCount = openGame.parsed_settings.playerCount;
+    elementElem.querySelector(".game-name").textContent = gameDisplayName(openGame);
+    elementElem.querySelector(".player-count").textContent = `${joinedCount} of ${playerCount} Players`;
+    elementElem.querySelector("button").addEventListener("click", () => joinGame(openGame));
+    return elementElem;
+}
+
+
+/**
  * Hide the list of open games and show the lobby for the given open game.
  */
 function showStartingGameLobby(openGame) {
     lobbyState.selectedOpenGame = openGame;
-    const lobbyElem = document.getElementById("starting-game-lobby");
-    lobbyElem.querySelector(".game-name").textContent = gameDisplayName(openGame);
+    const startingGameLobbyElem = document.getElementById("starting-game-lobby");
+    startingGameLobbyElem.querySelector(".game-name").textContent = gameDisplayName(openGame);
 
     // One slot per joined user, then "not joined" slots up to playerCount.
     const players = [...openGame.joined_users];
@@ -125,8 +150,10 @@ function showStartingGameLobby(openGame) {
 
     // Swap the display
     document.getElementById("view-games-lobby").hidden = true;
-    lobbyElem.hidden = false;
+    startingGameLobbyElem.hidden = false;
 }
 
 
-showOpenGames();
+
+document.getElementById("leave-open-game-button").addEventListener("click", leaveGame);
+showViewGamesLobby();
