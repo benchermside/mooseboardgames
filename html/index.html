@@ -17,7 +17,7 @@
                     <input id="login-username" autocomplete="username">
                     <label for="login-password">Password</label>
                     <input id="login-password" type="password" autocomplete="current-password">
-                    <div id="login-error-message"></div>
+                    <div id="login-error-message" class="error-message"></div>
                     <button id="login-button">Log In</button>
                 </section>
                 <section>
@@ -27,13 +27,13 @@
                     <input id="create-account-email" type="email" autocomplete="email">
                     <label for="create-account-password">Password</label>
                     <input id="create-account-password" type="password" autocomplete="new-password">
-                    <div id="create-account-error-message"></div>
+                    <div id="create-account-error-message" class="error-message"></div>
                     <button id="create-account-button">Create Account</button>
                 </section>
             </div>
             <div id="view-games-lobby">
                 <button>Create Game</button>
-                <div id="join-game-error-message"></div>
+                <div id="join-game-error-message" class="error-message"></div>
                 <div id="open-games"></div>
                 <template id="open-game-template">
                     <div class="open-game">
@@ -45,7 +45,7 @@
             </div>
             <div id="starting-game-lobby" hidden>
                 <div class="game-name"></div>
-                <div id="leave-game-error-message"></div>
+                <div id="leave-game-error-message" class="error-message"></div>
                 <div id="player-views"></div>
                 <div id="starting-game-content">
                     <button id="leave-open-game-button">Leave</button>
