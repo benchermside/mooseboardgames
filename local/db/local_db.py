@@ -23,6 +23,7 @@ TABLES = {
     "mooseboardgames-open_games-dev": "open_game_id",
     "mooseboardgames-cookie-dev": "cookie_id",
     "mooseboardgames-user-dev": "user_id",
+    "mooseboardgames-username-dev": "username",
     "mooseboardgames-session-dev": "session_id",
 }
 
@@ -33,9 +34,18 @@ SAMPLE_DATA = {
     "mooseboardgames-user-dev": [
         {
             "user_id": {"S": SAMPLE_USER_ID},
-            "username": {"S": "localdev"},
-            "email": {"S": "localdev@example.com"},
+            "username": {"S": "tom"},
+            "email": {"S": "tom@example.com"},
+            # The password is "pass" (hashed the way routes/account_util.py does).
+            "password_hash": {"S": "bd4169ca92105b7b19e3aa9c5ee6e44452e10b7502c323513dcf715c1a9aa2be2ae71cd648e0cda1ce4e5b199d154ba139e8f4f879e37b1427a3cd521d5c9888"},
+            "password_salt": {"S": "3dae2c2374a77d105ce81e7d32bee664"},
             "create_time": {"N": "0"},
+        },
+    ],
+    "mooseboardgames-username-dev": [
+        {
+            "username": {"S": "tom"},
+            "user_id": {"S": SAMPLE_USER_ID},
         },
     ],
     "mooseboardgames-cookie-dev": [
