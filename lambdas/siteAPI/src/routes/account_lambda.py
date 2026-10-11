@@ -77,6 +77,13 @@ def create_user(event: dict, path_params: dict) -> dict:
             raise BadRequest("Username is already taken.")
         raise
 
+    user_id = user["user_id"]
+    cookie_id = create_session_cookie(user_id)
+    return _ok(
+        {"user_id": user_id},
+        headers={"Set-Cookie": f"{COOKIE_NAME}={cookie_id}; HttpOnly; Secure; SameSite=Strict; Path=/"},
+    )
+
     return _logged_in_response(user["user_id"])
 
 
@@ -119,7 +126,7 @@ def login(event: dict, path_params: dict) -> dict:
     return _ok(
         {"user_id": user_id},
         headers={"Set-Cookie": f"{COOKIE_NAME}={cookie_id}; HttpOnly; Secure; SameSite=Strict; Path=/"},
-    )    
+    )
 
 
 def logout(event: dict, path_params: dict) -> dict:
