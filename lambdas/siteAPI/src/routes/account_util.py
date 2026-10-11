@@ -17,6 +17,11 @@ def verify_password(password: str, salt_hex: str, expected_hash: str) -> bool:
     return hmac.compare_digest(actual_hash, expected_hash)
 
 
+def create_session(user_id: str) -> str:
+    """Creates a new session, returns the session cookie"""
+    # TODO
+    return create_session_cookie
+
 def create_session_cookie(user_id: str) -> str:
     """Create a login cookie for user_id and return its cookie_id."""
     # TODO: write a row to the cookie table (cookie_id, user_id, expire_time).
