@@ -4,7 +4,8 @@ import secrets
 import time
 
 from db import get_connection, json_to_DDB_dict, DDB_dict_to_json
-from http_utils import parse_json_body, require_fields, BadRequest, Unauthorized, COOKIE_NAME
+from http_utils import (parse_json_body, require_fields, _read_cookie_id, BadRequest, Unauthorized,
+                        COOKIE_NAME, COOKIE_TABLE_NAME)
 from routes.account_util import hash_password, verify_password, create_session
 from util import create_id
 

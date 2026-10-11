@@ -110,6 +110,18 @@ async function logInUser() {
     showViewGamesLobby();
 }
 
+/**
+ * Log the user out through the API (which deletes the login cookie), then go
+ * to the login screen. That happens even if the API call fails, since there's
+ * nowhere else sensible to go.
+ */
+async function logOutUser() {
+    // FIXME: Should call the logOut function on the server, which can delete the cookie
+    //  (javascript isn't allowed to mess with the cookie directly).
+    lobbyState.currentUser = null;
+    showLoginScreen();
+}
+
 // ====== Functions for Rendering Content ======
 
 /** Show a particular top-level screen, hiding all the others. */
@@ -200,5 +212,6 @@ function showStartingGameLobby(openGame) {
 
 
 document.getElementById("login-button").addEventListener("click", logInUser);
+document.getElementById("log-out-button").addEventListener("click", logOutUser);
 document.getElementById("leave-open-game-button").addEventListener("click", leaveGame);
 showViewGamesLobby();

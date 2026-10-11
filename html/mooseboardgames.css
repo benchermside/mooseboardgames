@@ -25,15 +25,30 @@ body {
     flex-direction: column;
 }
 
-header, footer {
+footer {
     flex: none;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
+/* Header: title centered on the page, log out button at the right. The equal
+   side columns keep the title centered no matter how wide the button is. */
 header {
     font-size: 2rem;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+
+    div {
+        grid-column: 2;
+    }
+
+    button {
+        grid-column: 3;
+        justify-self: end;
+        margin: 0 0.5rem;
+    }
 }
 
 main {
