@@ -11,6 +11,26 @@
     <body>
         <header>Moose Board Games</header>
         <main>
+            <div id="login-screen">
+                <section>
+                    <label for="login-username">Username</label>
+                    <input id="login-username" autocomplete="username">
+                    <label for="login-password">Password</label>
+                    <input id="login-password" type="password" autocomplete="current-password">
+                    <div id="login-error-message"></div>
+                    <button id="login-button">Log In</button>
+                </section>
+                <section>
+                    <label for="create-account-username">Username</label>
+                    <input id="create-account-username" autocomplete="username">
+                    <label for="create-account-email">Email</label>
+                    <input id="create-account-email" type="email" autocomplete="email">
+                    <label for="create-account-password">Password</label>
+                    <input id="create-account-password" type="password" autocomplete="new-password">
+                    <div id="create-account-error-message"></div>
+                    <button id="create-account-button">Create Account</button>
+                </section>
+            </div>
             <div id="view-games-lobby">
                 <button>Create Game</button>
                 <div id="join-game-error-message"></div>

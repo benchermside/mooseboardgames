@@ -44,12 +44,38 @@ button {
     margin: 0.5rem 0;
 }
 
-/* Both lobby views share the same centered, bordered box. */
-#view-games-lobby, #starting-game-lobby {
+/* All top-level views share the same centered, bordered box. */
+#login-screen, #view-games-lobby, #starting-game-lobby {
     border: 2px solid black;
     padding: 0.5rem;
     max-width: 50rem;
     margin: 0 auto;
+}
+
+#login-screen {
+    max-width: 25rem;
+
+    /* Each login section: labels (left) and inputs (right), then error and button across the bottom. */
+    section {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+
+        div, button {
+            grid-column: 1 / -1;
+        }
+
+        button {
+            justify-self: end;
+        }
+    }
+
+    /* Create a line between sections. */
+    section + section {
+        border-top: 2px solid black;
+    }
 }
 
 /* Starting-game lobby: title and error across the top, then players (left) and content (right). */
