@@ -105,7 +105,30 @@ async function logInUser() {
         return;
     }
     errorMessageElem.textContent = "";
-    passwordElem.value = "";
+    passwordElem.value = ""; // a security measure
+    lobbyState.currentUser = response.body.user_id;
+    showViewGamesLobby();
+}
+
+
+/**
+ * Create an account through the API with the username, email, and password
+ * from the login screen. If that works (the API logs the new user in and sets
+ * the login cookie), go to the list of open games; otherwise stay on the
+ * login screen and say why.
+ */
+async function signUpUser() {
+    const errorMessageElem = document.getElementById("create-account-error-message");
+    const usernameElem = document.getElementById("create-account-username");
+    const emailElem = document.getElementById("create-account-email");
+    const passwordElem = document.getElementById("create-account-password");
+    const response = await signUp(usernameElem.value, emailElem.value, passwordElem.value);
+    if (!response.ok) {
+        errorMessageElem.textContent = `Could not create account: ${response.body?.error ?? response.status}`;
+        return;
+    }
+    errorMessageElem.textContent = "";
+    passwordElem.value = ""; // a security measure
     lobbyState.currentUser = response.body.user_id;
     showViewGamesLobby();
 }
@@ -212,6 +235,7 @@ function showStartingGameLobby(openGame) {
 
 
 document.getElementById("login-button").addEventListener("click", logInUser);
+document.getElementById("create-account-button").addEventListener("click", signUpUser);
 document.getElementById("log-out-button").addEventListener("click", logOutUser);
 document.getElementById("leave-open-game-button").addEventListener("click", leaveGame);
 showViewGamesLobby();
