@@ -1,5 +1,11 @@
+==== Information about the domain names and URLs being used ====
 
+  mooseboardgames.com/*          <- prod HTML
+  api.mooseboardgames.com/*      <- prod API
+  dev.mooseboardgames.com/*      <- dev HTML
+  dev-api.mooseboardgames.com/*  <- dev API
 
+==== Information about the lambdas that are defined ====
 get open games
     PATH: /open-games
     VERB: GET
