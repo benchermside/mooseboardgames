@@ -1,11 +1,13 @@
 import json
+import time
 
 import pytest
 
 from db import DDB_dict_to_json
+from http_utils import SESSION_TABLE_NAME, Unauthorized, authenticate_request
 from lambda_function import lambda_handler
 from routes.account_lambda import USERS_TABLE_NAME, USERNAMES_TABLE_NAME
-from routes.account_util import hash_password
+from routes.account_util import hash_password, SESSION_DURATION_SECONDS
 
 
 def _signup(username="moose_fan", password="hunter2hunter2", email="a@b.com") -> dict:
@@ -101,3 +103,58 @@ def test_login_missing_field_returns_400():
         "body": json.dumps({"username": "moose_fan"}),
     }
     assert lambda_handler(event, None)["statusCode"] == 400
+
+
+def _session_id(result: dict) -> str:
+    """Pull the session_id out of a response's Set-Cookie header."""
+    first_part = result["headers"]["Set-Cookie"].split(";")[0]
+    name, _, value = first_part.partition("=")
+    assert name == "cookie_id"
+    return value
+
+
+def _get_session(dynamodb, session_id: str) -> dict:
+    item = dynamodb.get_item(TableName=SESSION_TABLE_NAME, Key={"session_id": {"S": session_id}})["Item"]
+    return DDB_dict_to_json(item)
+
+
+@pytest.mark.parametrize("do_login", [False, True])
+def test_signup_and_login_write_session(dynamodb, do_login):
+    result = _signup()
+    user_id = json.loads(result["body"])["user_id"]
+    if do_login:
+        result = _login()
+    assert f"Max-Age={SESSION_DURATION_SECONDS}" in result["headers"]["Set-Cookie"]
+
+    session = _get_session(dynamodb, _session_id(result))
+    assert session["user_id"] == user_id
+    assert abs(session["expire_time"] - (time.time() + SESSION_DURATION_SECONDS)) < 60
+
+
+def test_each_login_gets_a_new_session():
+    _signup()
+    assert _session_id(_login()) != _session_id(_login())
+
+
+def test_session_cookie_authenticates():
+    result = _signup()
+    user_id = json.loads(result["body"])["user_id"]
+    event = {"cookies": [f"cookie_id={_session_id(result)}"]}
+    assert authenticate_request(event) == user_id
+
+
+def test_expired_session_rejected(dynamodb):
+    session_id = _session_id(_signup())
+    dynamodb.update_item(
+        TableName=SESSION_TABLE_NAME,
+        Key={"session_id": {"S": session_id}},
+        UpdateExpression="SET expire_time = :t",
+        ExpressionAttributeValues={":t": {"N": str(int(time.time()) - 1)}},
+    )
+    with pytest.raises(Unauthorized):
+        authenticate_request({"cookies": [f"cookie_id={session_id}"]})
+
+
+def test_unknown_session_rejected():
+    with pytest.raises(Unauthorized):
+        authenticate_request({"cookies": ["cookie_id=s_nonexistent"]})

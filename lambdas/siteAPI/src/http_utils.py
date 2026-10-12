@@ -5,10 +5,11 @@ import time
 
 from db import get_connection, DDB_dict_to_json
 
-COOKIE_TABLE_NAME = "mooseboardgames-cookie-dev"
+SESSION_TABLE_NAME = "mooseboardgames-session-dev"
 
-# Name of the cookie the browser sends, e.g. "Cookie: cookie_id=abc123".
-COOKIE_NAME = "cookie_id"
+# Name of the cookie the browser sends. Its value is a session_id,
+# e.g. "Cookie: cookie_id=s_abc123".
+COOKIE_NAME = "session"
 
 
 class BadRequest(Exception):
@@ -81,18 +82,18 @@ def _read_cookie_id(event: dict) -> str | None:
 def authenticate_request(event: dict) -> str:
     """Validate the request's session cookie and return the owning user_id.
 
-    Reads cookie_id from the Cookie header, looks it up in the cookie table,
-    and confirms it exists and has not expired. Raises Unauthorized on any
+    Reads the session_id from the Cookie header, looks it up in the session
+    table, and confirms it exists and has not expired. Raises Unauthorized on any
     failure so lambda_handler can return a 401.
     """
-    cookie_id = _read_cookie_id(event)
-    if not cookie_id:
+    session_id = _read_cookie_id(event)
+    if not session_id:
         raise Unauthorized("No session cookie provided.")
 
     dynamodb = get_connection()
     response = dynamodb.get_item(
-        TableName=COOKIE_TABLE_NAME,
-        Key={"cookie_id": {"S": cookie_id}},
+        TableName=SESSION_TABLE_NAME,
+        Key={"session_id": {"S": session_id}},
     )
 
     item = response.get("Item")

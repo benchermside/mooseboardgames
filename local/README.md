@@ -36,8 +36,8 @@ Use `localhost`, not `127.0.0.1`, in the browser, so that cookies reach the API.
 The first time the tables are created (and after `just db-reset`), they get:
 
 - user `u_123456789`, the user the routes currently hard-code.
-- a non-expiring login cookie `c_localdev` for that user. Set it in the browser
-  console with `document.cookie = "cookie_id=c_localdev"`.
+- a non-expiring login session `s_localdev` for that user. Set it in the browser
+  console with `document.cookie = "cookie_id=s_localdev"`.
 - one open Connect 4 game, `og_sample`.
 
 The functions in `html/callAPI.js` can be tried from the browser console on

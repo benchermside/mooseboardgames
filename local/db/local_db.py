@@ -21,7 +21,6 @@ from botocore.exceptions import EndpointConnectionError
 # table name -> its partition key (all keys are strings)
 TABLES = {
     "mooseboardgames-open_games-dev": "open_game_id",
-    "mooseboardgames-cookie-dev": "cookie_id",
     "mooseboardgames-user-dev": "user_id",
     "mooseboardgames-username-dev": "username",
     "mooseboardgames-session-dev": "session_id",
@@ -48,11 +47,11 @@ SAMPLE_DATA = {
             "user_id": {"S": SAMPLE_USER_ID},
         },
     ],
-    "mooseboardgames-cookie-dev": [
+    "mooseboardgames-session-dev": [
         # No expire_time, so it never expires. Use it in a browser with
-        # document.cookie = "cookie_id=c_localdev"
+        # document.cookie = "cookie_id=s_localdev"
         {
-            "cookie_id": {"S": "c_localdev"},
+            "session_id": {"S": "s_localdev"},
             "user_id": {"S": SAMPLE_USER_ID},
         },
     ],

@@ -1,7 +1,13 @@
 import hashlib
 import hmac
+import time
 
+from db import get_connection, json_to_DDB_dict
+from http_utils import COOKIE_NAME, SESSION_TABLE_NAME
 from util import create_id
+
+# How long a login lasts before the user has to log in again.
+SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60
 
 
 def hash_password(password: str, salt: bytes) -> str:
@@ -18,12 +24,22 @@ def verify_password(password: str, salt_hex: str, expected_hash: str) -> bool:
 
 
 def create_session(user_id: str) -> str:
-    """Creates a new session, returns the session cookie"""
-    # TODO
-    return create_session_cookie(user_id)
+    """Write a new session row for user_id and return its session_id."""
+    session_id = create_id("s")
+    session = {
+        "session_id": session_id,
+        "user_id": user_id,
+        "expire_time": int(time.time()) + SESSION_DURATION_SECONDS,
+    }
+    get_connection().put_item(
+        TableName=SESSION_TABLE_NAME,
+        Item=json_to_DDB_dict(session),
+        ConditionExpression="attribute_not_exists(session_id)",
+    )
+    return session_id
 
-def create_session_cookie(user_id: str) -> str:
-    """Create a login cookie for user_id and return its cookie_id."""
-    # TODO: write a row to the cookie table (cookie_id, user_id, expire_time).
-    #   Until then the returned id is not stored, so it won't authenticate.
-    return create_id("c")
+
+def create_session_cookie(session_id: str) -> str:
+    """Return the Set-Cookie header value that hands session_id to the browser."""
+    return (f"{COOKIE_NAME}={session_id}; Max-Age={SESSION_DURATION_SECONDS}; "
+            f"HttpOnly; Secure; SameSite=Strict; Path=/")

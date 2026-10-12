@@ -14,9 +14,6 @@ tables
         username  (type string) (PK) [case sensitive]
         user_id  (type string)
 
-    session
-        session_id  (type string) (PK)
-
 
     open_game
         open_game_id  (type string) (PK)
@@ -27,7 +24,7 @@ tables
 
 
 
-    cookie
-        cookie_id (PK)
+    session
+        session_id (PK)
         user_id
         expire_time

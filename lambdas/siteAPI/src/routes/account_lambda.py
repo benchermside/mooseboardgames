@@ -4,9 +4,8 @@ import secrets
 import time
 
 from db import get_connection, json_to_DDB_dict, DDB_dict_to_json
-from http_utils import (parse_json_body, require_fields, _read_cookie_id, BadRequest, Unauthorized,
-                        COOKIE_NAME, COOKIE_TABLE_NAME)
-from routes.account_util import hash_password, verify_password, create_session
+from http_utils import parse_json_body, require_fields, BadRequest, Unauthorized
+from routes.account_util import hash_password, verify_password, create_session, create_session_cookie
 from util import create_id
 
 USERS_TABLE_NAME = "mooseboardgames-user-dev"
@@ -79,10 +78,10 @@ def create_user(event: dict, path_params: dict) -> dict:
         raise
 
     user_id = user["user_id"]
-    cookie_id = create_session(user_id)
+    session_id = create_session(user_id)
     return _ok(
         {"user_id": user_id},
-        headers={"Set-Cookie": f"{COOKIE_NAME}={cookie_id}; HttpOnly; Secure; SameSite=Strict; Path=/"},
+        headers={"Set-Cookie": create_session_cookie(session_id)},
     )
 
 
@@ -121,10 +120,10 @@ def login(event: dict, path_params: dict) -> dict:
     if not verify_password(password, user_info["password_salt"], user_info["password_hash"]):
         raise bad_login
 
-    cookie_id = create_session(user_id)
+    session_id = create_session(user_id)
     return _ok(
         {"user_id": user_id},
-        headers={"Set-Cookie": f"{COOKIE_NAME}={cookie_id}; HttpOnly; Secure; SameSite=Strict; Path=/"},
+        headers={"Set-Cookie": create_session_cookie(session_id)},
     )
 
 
