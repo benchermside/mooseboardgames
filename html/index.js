@@ -3,14 +3,18 @@
 //
 // Relies on callAPI.js having been loaded first.
 
+// ====== State Variables ======
 
 // All of the information about the current state of the lobby.
 let lobbyState = {
+    // The current logged-in user.
+    currentUser: null,
     // The open-game JSON for the game whose lobby is showing, or null while the
     // list of open games is showing.
     selectedOpenGame: null
 }
 
+// ====== Helper Functions ======
 
 /**
  * The name to show the user for an open game.
@@ -29,6 +33,7 @@ function withParsedSettings(openGame) {
     return {...openGame, parsed_settings: JSON.parse(openGame.settings)};
 }
 
+// ====== Action Functions ======
 
 /**
  * Join an open game through the API. If that works, switch to its lobby;
@@ -86,6 +91,79 @@ async function leaveGame() {
 
 
 /**
+ * Log in through the API with the username and password from the login
+ * screen. If that works (the API sets the login cookie), go to the list of
+ * open games; otherwise stay on the login screen and say why.
+ */
+async function logInUser() {
+    const errorMessageElem = document.getElementById("login-error-message");
+    const usernameElem = document.getElementById("login-username");
+    const passwordElem = document.getElementById("login-password");
+    const response = await logIn(usernameElem.value, passwordElem.value);
+    if (!response.ok) {
+        errorMessageElem.textContent = `Could not log in: ${response.body?.error ?? response.status}`;
+        return;
+    }
+    errorMessageElem.textContent = "";
+    passwordElem.value = ""; // a security measure
+    lobbyState.currentUser = response.body.user_id;
+    showViewGamesLobby();
+}
+
+
+/**
+ * Create an account through the API with the username, email, and password
+ * from the login screen. If that works (the API logs the new user in and sets
+ * the login cookie), go to the list of open games; otherwise stay on the
+ * login screen and say why.
+ */
+async function signUpUser() {
+    const errorMessageElem = document.getElementById("create-account-error-message");
+    const usernameElem = document.getElementById("create-account-username");
+    const emailElem = document.getElementById("create-account-email");
+    const passwordElem = document.getElementById("create-account-password");
+    const response = await signUp(usernameElem.value, emailElem.value, passwordElem.value);
+    if (!response.ok) {
+        errorMessageElem.textContent = `Could not create account: ${response.body?.error ?? response.status}`;
+        return;
+    }
+    errorMessageElem.textContent = "";
+    passwordElem.value = ""; // a security measure
+    lobbyState.currentUser = response.body.user_id;
+    showViewGamesLobby();
+}
+
+/**
+ * Log the user out through the API (which deletes the login cookie), then go
+ * to the login screen. That happens even if the API call fails, since there's
+ * nowhere else sensible to go.
+ */
+async function logOutUser() {
+    // FIXME: Should call the logOut function on the server, which can delete the cookie
+    //  (javascript isn't allowed to mess with the cookie directly).
+    lobbyState.currentUser = null;
+    showLoginScreen();
+}
+
+// ====== Functions for Rendering Content ======
+
+/** Show a particular top-level screen, hiding all the others. */
+function showTopElement(elementName) {
+    document.getElementById("login-screen").hidden = true;
+    document.getElementById("starting-game-lobby").hidden = true;
+    document.getElementById("view-games-lobby").hidden = true;
+    document.getElementById(elementName).hidden = false;
+}
+
+/**
+ * Go to a not-logged-in state and display the login/signup screen.
+ */
+function showLoginScreen() {
+    lobbyState.currentUser = null;
+    showTopElement("login-screen");
+}
+
+/**
  * Build the element for one player slot in the lobby, from the
  * player-view-template in index.html. text is what to show in it.
  */
@@ -112,8 +190,7 @@ async function showViewGamesLobby() {
     containerElem.replaceChildren(...openGames.map(makeOpenGameElement));
 
     // Swap the display
-    document.getElementById("starting-game-lobby").hidden = true;
-    document.getElementById("view-games-lobby").hidden = false;
+    showTopElement("view-games-lobby");
 }
 
 
@@ -149,11 +226,16 @@ function showStartingGameLobby(openGame) {
     document.getElementById("player-views").replaceChildren(...players.map(makePlayerViewElement));
 
     // Swap the display
-    document.getElementById("view-games-lobby").hidden = true;
-    startingGameLobbyElem.hidden = false;
+    showTopElement("starting-game-lobby");
+
 }
 
 
+// ====== Initial Setup Actions ======
 
+
+document.getElementById("login-button").addEventListener("click", logInUser);
+document.getElementById("create-account-button").addEventListener("click", signUpUser);
+document.getElementById("log-out-button").addEventListener("click", logOutUser);
 document.getElementById("leave-open-game-button").addEventListener("click", leaveGame);
 showViewGamesLobby();

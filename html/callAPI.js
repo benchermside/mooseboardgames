@@ -114,3 +114,44 @@ async function joinOpenGame(openGameId) {
 async function leaveOpenGame(openGameId) {
     return await callAPI("PUT", `/open-games/leave/${encodeURIComponent(openGameId)}`);
 }
+
+
+/**
+ * Log in to an existing account.
+ *
+ * On success body is {user_id} and the API sets the cookie_id cookie. A wrong
+ * username or password gets a 401, with the same body.error either way.
+ */
+async function logIn(username, password) {
+    return await callAPI("POST", "/account-login", {
+        username: username,
+        password: password,
+    });
+}
+
+
+/**
+ * Create a new account and log in to it.
+ *
+ * username is 2-20 letters, digits, '_' or spaces (not starting or ending
+ * with a space); password is 8-64 characters. On success body is {user_id}
+ * and the API sets the cookie_id cookie. A bad field or a username that is
+ * already taken gets a 400, and body.error explains why.
+ */
+async function signUp(username, email, password) {
+    return await callAPI("POST", "/account-signup", {
+        username: username,
+        email: email,
+        password: password,
+    });
+}
+
+
+/**
+ * Log out, ending the login cookie and the session.
+ *
+ * On success body is {message}.
+ */
+async function logOut() {
+    return await callAPI("POST", "/account-logout");
+}
