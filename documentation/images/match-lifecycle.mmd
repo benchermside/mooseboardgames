@@ -1,0 +1,16 @@
+stateDiagram-v2
+    direction LR
+    [*] --> CREATED
+    CREATED --> LAUNCHING: launch
+    LAUNCHING --> READY: origin known<br/>AND listening
+    READY --> IN_PROGRESS: first move
+    IN_PROGRESS --> ENDED: game over
+    CREATED --> CANCELLED: lobby cancels /<br/>waiting-room timeout
+    LAUNCHING --> ABORTED: task fails to start
+    READY --> CANCELLED: lobby cancels /<br/>waiting-room timeout
+    IN_PROGRESS --> ABANDONED: idle timeout
+    IN_PROGRESS --> ABORTED: task dies<br/>unexpectedly
+    CANCELLED --> [*]
+    ABORTED --> [*]
+    ENDED --> [*]
+    ABANDONED --> [*]

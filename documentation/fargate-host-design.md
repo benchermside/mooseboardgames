@@ -54,13 +54,11 @@ These are not yet decided; each has a recommendation.
 
 ### Match lifecycle (state machine)
 
-```
-CREATED ──launch──▶ LAUNCHING ──(origin known AND listening)──▶ READY ──first move──▶ IN_PROGRESS
-   │                    │                                         │                       │
-   │                    └──task fails to start──▶ ABORTED          │                       ├──gameover──▶ ENDED
-   │                                                              │                       ├──idle timeout──▶ ABANDONED
-   └──lobby cancels / waiting-room timeout ─────────────────────▶ CANCELLED              └──task dies unexpectedly──▶ ABORTED
-```
+![Match lifecycle state machine](images/match-lifecycle.svg)
+
+<!-- Source: images/match-lifecycle.mmd. Regenerate with:
+     npx @mermaid-js/mermaid-cli -i images/match-lifecycle.mmd -o images/match-lifecycle.svg -b white -->
+
 
 The lobby never shows a connect URL to players until the match is `READY`.
 
