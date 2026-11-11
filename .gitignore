@@ -8,6 +8,13 @@ __pycache__/
 .venv/
 venv/
 
+# Node
+node_modules/
+
+# Parcel (games/*)
+.parcel-cache/
+dist/
+
 # Lambda build artifacts
 package/
 deployment.zip

@@ -1,0 +1,8 @@
+{
+  "name": "mooseboardgames",
+  "private": true,
+  "workspaces": [
+    "games/ur",
+    "lambdas/gameAPI"
+  ]
+}

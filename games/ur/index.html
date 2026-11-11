@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>boardgame.io Tutorial</title>
+        <meta charset="utf-8" />
+    </head>
+    <body>
+        <div id="app"></div>
+        <script type="module" src="./src/app.js"></script>
+    </body>
+        <style>
+            .cell {
+                border: 5px solid #555;
+                width: 50px;
+                height: 50px;
+                line-height: 50px;
+                text-align: center;
+            }
+            .empty {
+                visibility: hidden;
+            }
+            .clickable {
+                background-color: #d3d1c9;
+            }
+            .below {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .above {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .coin {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .piece {
+                display: inline-block;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                vertical-align: middle;
+            }
+            .red {
+                background-color: red;
+            }
+            .blue {
+                background-color: blue;
+            }
+            .hidden {
+                display: none;
+            }
+            .rollButton {
+                width: 400px;
+                height: 150px;
+                font-size: large;
+            }
+            .playArea {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .CoinsHolder{
+                display: flex;
+                flex-direction: column;
+            }
+            
+        </style>
+</html>

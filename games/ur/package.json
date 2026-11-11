@@ -1,0 +1,18 @@
+{
+  "name": "@mooseboardgames/ur",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "boardgame.io": "^0.50.2"
+  },
+  "devDependencies": {
+    "parcel": "^2.16.4",
+    "process": "^0.11.10"
+  },
+  "scripts": {
+    "start": "parcel index.html --open",
+    "serve": "node src/server.js",
+    "build": "parcel build index.html --public-url /games/ur/"
+  },
+  "browserslist": "defaults and supports async-functions"
+}

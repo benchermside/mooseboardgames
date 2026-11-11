@@ -1,0 +1,40 @@
+peer to peer
+description
+Use the peer to peer library https://github.com/boardgameio/p2p to host the game peer to peer with a turn server.
+pros
+-Library existed
+-fairly easy to implement
+-Not long startup time
+-Not expensive
+cons
+-library not maintained
+-allows cheating
+
+
+fargate container
+description
+Use an AWS fargate container started every game to host the game
+pros
+-Scales with number of games
+cons
+-A little more expensive than the other 2 listed options
+-15-30 second startup time
+
+lambda with state in DDB
+description
+Rewrite some code to rework boardgameio to work with lambdas
+pros
+-cheap
+-fast
+-effective
+cons
+-Lots of code
+
+
+Decision
+rejected peer to peer cause the library was not maintained
+rejected AWS lambda due to lots of code to write
+Used fargate container, startup time can hopefully be maintained
+
+
+

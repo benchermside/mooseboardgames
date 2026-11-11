@@ -1,0 +1,16 @@
+{
+  "name": "@mooseboardgames/game-api",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "boardgame.io": "^0.50.2"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.700.0",
+    "@aws-sdk/client-dynamodb": "^3.700.0",
+    "@aws-sdk/lib-dynamodb": "^3.700.0"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
