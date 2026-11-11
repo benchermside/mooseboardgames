@@ -13,12 +13,21 @@ Run each boardgame.io match in its own short-lived AWS Fargate task, launched by
 | D3 | CloudFront → task connection | Plain HTTP. No secret header. Tasks must not be reachable from the public internet; the security group admits only CloudFront. |
 | D4 | Match durability | In memory only. If a container crashes, its match is lost (recorded as `ABORTED`); only final results are persisted. |
 | D5 | Hosting unit | One Fargate task per match, launched with `RunTask` (not an ECS Service) |
+| D6 | Origin hostname for the task | The public DNS name AWS assigns to the task's network interface |
+| D7 | Which CloudFront distribution | A `/m/*` cache behavior on the distribution that already serves the site |
+| D8 | Container image packaging | One image containing every game |
+
+Notes on D6–D8:
+
+- **D6.** CloudFront origins must be domain names, not IPs. The AWS-assigned name (`ec2-a-b-c-d.<region>.compute.amazonaws.com`) requires VPC DNS hostnames to be enabled. It avoids per-task record management and Route 53 propagation delays. Spike S2 confirms it's reliably present for Fargate ENIs.
+- **D7.** The browser connects to the same origin as the site, so there's no CORS and only one certificate.
+- **D8.** The container picks the game from the match record. One image is simpler to build, and the task definition is shared. Revisit if image size starts hurting cold starts.
 
 ## Proposed defaults (override in review)
 
 These are choices that seemed to have a clear best answer; each is easy to change.
 
-- **Routing key in the URL is a path prefix.** Players connect to `wss://<play-host>/m/<matchID>/socket.io/...`. The container configures its Socket.IO server path to `/m/<matchID>/socket.io` from its environment, so a stray connection for another match is rejected by the container itself. Fallback if boardgame.io's transport won't accept a custom path: put `matchID` in the Socket.IO query string and forward query strings to the origin.
+- **Routing key in the URL is a path prefix.** Players connect to `wss://<site-host>/m/<matchID>/socket.io/...`. The container configures its Socket.IO server path to `/m/<matchID>/socket.io` from its environment, so a stray connection for another match is rejected by the container itself. Fallback if boardgame.io's transport won't accept a custom path: put `matchID` in the Socket.IO query string and forward query strings to the origin.
 - **The client uses WebSocket transport only** (`transports: ['websocket']`), skipping Socket.IO's HTTP long-polling. Long-polling would send every poll through CloudFront and invoke Lambda@Edge each time, adding cost and latency.
 - **The container listens on port 8000** (not 80, so it can run as non-root). CloudFront allows custom-origin HTTP ports in the 1024–65535 range.
 - **Tasks run on ARM64 (Graviton) at 0.25 vCPU / 0.5 GB** to start; resize after load testing. Fargate Spot is not used, because an interruption would kill the match.
@@ -27,14 +36,6 @@ These are choices that seemed to have a clear best answer; each is easy to chang
   - Idle: if no move is made for 15 minutes, the match is `ABANDONED`.
   - Hard maximum task lifetime: 4 hours.
   - Shutdown grace period after game over: 30 seconds.
-
-## Open questions
-
-These are not yet decided; each has a recommendation.
-
-- **Q1. Origin hostname for the task.** CloudFront origins must be domain names, not IPs. Either use the public DNS name AWS assigns to the task's network interface (`ec2-a-b-c-d.<region>.compute.amazonaws.com`, requires VPC DNS hostnames enabled), or create a Route 53 record per task. **Recommendation:** the AWS-assigned name. It avoids per-task record management and Route 53 propagation delays. Confirm it's reliably present for Fargate ENIs (spike S2), with Route 53 as the fallback.
-- **Q2. Which CloudFront distribution.** Either add a `/m/*` cache behavior to the distribution that already serves the site, or use a dedicated distribution on a subdomain (e.g., `play.<domain>`). **Recommendation:** a behavior on the existing distribution if the site is already on CloudFront. That means same origin for the browser, no CORS, and one certificate. Otherwise use a dedicated subdomain.
-- **Q3. Container image packaging.** Either one image containing every game, with the game selected by environment variable, or one image per game. **Recommendation:** one image while the catalog is small. It's simpler to build, and the task definition is shared. Revisit if image size starts hurting cold starts.
 
 ## Architecture
 
@@ -50,7 +51,7 @@ These are not yet decided; each has a recommendation.
   - final result
 - **Game server container (Fargate).** A boardgame.io server hosting exactly one match.
 - **Orchestration Lambdas.** Launch, task-state handler, cancel, and reaper.
-- **CloudFront distribution plus Lambda@Edge router.** Terminates TLS and routes each connection to the right task.
+- **CloudFront `/m/*` behavior plus Lambda@Edge router.** Terminates TLS and routes each connection to the right task.
 
 ### Match lifecycle (state machine)
 
@@ -65,9 +66,9 @@ The lobby never shows a connect URL to players until the match is `READY`.
 ### Launch sequence
 
 1. A player opens a match in the lobby. The lobby writes a `CREATED` record containing the game name, seat count, setup data, and per-seat credentials.
-2. The launch Lambda calls `RunTask`. It passes only `MATCH_ID` (plus `GAME_NAME` if Q3 goes per-image) as container environment overrides, and tags the task with the match ID. It records the task ARN and sets status to `LAUNCHING`.
+2. The launch Lambda calls `RunTask`. It passes only `MATCH_ID` as a container environment override, and tags the task with the match ID. It records the task ARN and sets status to `LAUNCHING`.
 3. The container boots and reads the match record from DynamoDB. It seeds the match into boardgame.io's in-memory storage under the lobby-assigned match ID, starts the server, and sets `listening = true` on the match record.
-4. Independently, an EventBridge rule on ECS Task State Change (`RUNNING`) invokes the task-state Lambda. That Lambda looks up the task's ENI, gets its public DNS name (Q1), and writes it to the match record as the origin host.
+4. Independently, an EventBridge rule on ECS Task State Change (`RUNNING`) invokes the task-state Lambda. That Lambda looks up the task's ENI, gets its public DNS name (D6), and writes it to the match record as the origin host.
    - This has to happen outside the container: the ECS task metadata endpoint exposes only the private IP.
    - It can't be replaced by a Lambda health-check either, because the security group admits only CloudFront.
 5. When both `listening` and the origin host are set, the lobby marks the match `READY` and pushes the connect URL to the waiting players. Whichever write lands second triggers this, via a conditional update or a DynamoDB Stream.
@@ -121,7 +122,7 @@ Because the game server is the task's only essential container, its exit stops t
 
 ### Client
 
-- The boardgame.io client uses the SocketIO transport with `server` set to the play host. Its `socketOpts` set the per-match path and websocket-only transport.
+- The boardgame.io client uses the SocketIO transport with `server` set to the site's own host. Its `socketOpts` set the per-match path and websocket-only transport.
 - On disconnect, the client asks the lobby for the match status. If the status is terminal (`ENDED`, `ABANDONED`, `ABORTED`), it shows that outcome instead of retrying.
 
 ### Cost profile
@@ -143,7 +144,7 @@ There is no ALB, no NAT gateway, and no provisioned capacity, so idle cost is a 
 ### Phase 0 — Spikes (de-risk before building)
 
 - **S1.** End-to-end hello world: a browser WebSocket connects through CloudFront and a Lambda@Edge origin-request rewrite to a Fargate task on HTTP port 8000. Confirm the upgrade works and idle connections survive with Socket.IO pings.
-- **S2.** Confirm that Fargate task ENIs in a public subnet expose a public DNS name (Q1), and measure how quickly it's available after `RUNNING`.
+- **S2.** Confirm that Fargate task ENIs in a public subnet expose a public DNS name (D6), and measure how quickly it's available after `RUNNING`.
 - **S3.** boardgame.io server internals:
   - Seed a match with an externally chosen match ID and credentials into in-memory storage.
   - Set a custom Socket.IO server path.
@@ -162,7 +163,7 @@ There is no ALB, no NAT gateway, and no provisioned capacity, so idle cost is a 
   - Task role scoped to the match table.
   - Log group with retention.
 - **T3.** Extend the match table schema with status, task ARN, origin host, listening flag, timestamps, and result. Enable a stream if it's used for the `READY` transition.
-- **T4.** CloudFront `/m/*` behavior or distribution (per Q2): cache and origin request policies, placeholder origin, and a certificate for the play host.
+- **T4.** CloudFront `/m/*` behavior on the site's existing distribution (per D7): cache and origin request policies, and a placeholder origin.
 - **T5.** Lambda@Edge router: build-time configuration, IAM role with read access to the match table, versioned deployment in us-east-1, association with the behavior.
 
 ### Phase 2 — Game server container
@@ -170,7 +171,7 @@ There is no ALB, no NAT gateway, and no provisioned capacity, so idle cost is a 
 - **T6.** Entrypoint. Read `MATCH_ID`, load the match record, seed the boardgame.io match with its credentials, start the server on the per-match path, and set `listening`.
 - **T7.** Activity-tracking storage wrapper and watchdog: game over, idle, and waiting-room timeouts, each writing its terminal status before exit.
 - **T8.** SIGTERM handler and the graceful shutdown sequence.
-- **T9.** Container image build: one image for all games (per Q3), non-root user, small base image.
+- **T9.** Container image build: one image for all games (per D8), non-root user, small base image.
 
 ### Phase 3 — Orchestration
 
