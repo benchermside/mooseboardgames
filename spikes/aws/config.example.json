@@ -1,0 +1,10 @@
+{
+  "region": "us-east-1",
+  "cluster": "mbg-spike",
+  "taskDefinition": "mbg-spike-game-server",
+  "containerName": "game-server",
+  "subnets": ["subnet-REPLACE_ME_1", "subnet-REPLACE_ME_2"],
+  "securityGroup": "sg-REPLACE_ME",
+  "table": "mbg-spike-matches",
+  "cloudFrontDomain": "dREPLACEME.cloudfront.net"
+}

@@ -20,6 +20,10 @@ package/
 deployment.zip
 .deps-hash
 
+# Spike AWS config and results (spikes/AWS-SETUP.md)
+spikes/aws/config.json
+spikes/aws/timings.jsonl
+
 # Environment / secrets
 .env
 .env.*

@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadSpikeMatches",
+      "Effect": "Allow",
+      "Action": "dynamodb:GetItem",
+      "Resource": "arn:aws:dynamodb:us-east-1:ACCOUNT_ID:table/mbg-spike-matches"
+    },
+    {
+      "Sid": "WriteLogsInAnyEdgeRegion",
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+      "Resource": "arn:aws:logs:*:ACCOUNT_ID:log-group:/aws/lambda/us-east-1.mbg-spike-router:*"
+    }
+  ]
+}
