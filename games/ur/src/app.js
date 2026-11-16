@@ -45,28 +45,24 @@ class UreClient {
 
         this.rootElement.innerHTML = `
         <div class="playArea">
-            <div class="above">
-                <div class="CoinsHolder">
+            <div>
+                <div class="coinArea" data-player="1">
                     <div class="coin red" data-id="coinP1N0"></div>
                     <div class="coin red" data-id="coinP1N1"></div>
-                </div>
-                <div class="CoinsHolder">
                     <div class="coin red" data-id="coinP1N2"></div>
                     <div class="coin red" data-id="coinP1N3"></div>
+                    <button class="rollButton" data-id="1roll">roll</button>
                 </div>
-                <button class="rollButton" data-id="1roll">roll</button>
             </div>
             <table>${rows.join('')}</table>
-            <div class="below">
-                <div class="CoinsHolder">
+            <div>
+                <div class="coinArea" data-player="0">
                     <div class="coin red" data-id="coinP0N0"></div>
                     <div class="coin red" data-id="coinP0N1"></div>
-                </div>
-                <div class="CoinsHolder">
                     <div class="coin red" data-id="coinP0N2"></div>
                     <div class="coin red" data-id="coinP0N3"></div>
+                    <button class="rollButton" data-id="0roll">roll</button>
                 </div>
-                <button class="rollButton" data-id="0roll">roll</button>
             </div>
             <p class="winner"></p>
         </div>
@@ -143,6 +139,17 @@ class UreClient {
                     cell.classList.add("flower");
                 }
             }
+        });
+        const coinAreas = this.rootElement.querySelectorAll('.coinArea');
+        coinAreas.forEach(coinArea => {
+            const activePlayersCoins = coinArea.dataset.player === state.ctx.currentPlayer;
+            const thisPlayerActive = this.client.playerID === state.ctx.currentPlayer;
+            const isRolling = state.G.step === "rolling"
+
+            const rollNeeded = activePlayersCoins && thisPlayerActive && isRolling;
+            coinArea.classList.toggle("roll-needed", rollNeeded);
+            const coinsDisabled = !activePlayersCoins;
+            coinArea.classList.toggle("coins-disabled", coinsDisabled);
         });
         const coins = this.rootElement.querySelectorAll('.coin');
         coins.forEach(coin => {

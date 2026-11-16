@@ -1,4 +1,3 @@
 Some TODO 
--The dice should show who's turn it inside
 -How meany unplaced Pieces and escaped pieces each player has
 should be displayed. 

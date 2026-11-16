@@ -25,15 +25,18 @@
             .clickable {
                 background-color: #d3d1c9;
             }
-            .below {
-                display: flex;
-                justify-content: center;
-                align-items: center;
+            .coinArea {
+                position: relative;
+                display: grid;
+                grid-template: 1fr 1fr / 1fr 1fr;
             }
-            .above {
-                display: flex;
-                justify-content: center;
-                align-items: center;
+            .coinArea > .rollButton {
+                position: absolute;
+                inset: 0;
+                display: none;
+            }
+            .coinArea.roll-needed > .rollButton {
+                display: block;
             }
             .coin {
                 width: 40px;
@@ -42,6 +45,9 @@
                 display: flex;
                 align-items: center;
                 justify-content: center;
+            }
+            .coinArea.coins-disabled > .coin {
+                filter: grayscale(0.7) opacity(0.75);
             }
             .piece {
                 display: inline-block;
@@ -60,8 +66,6 @@
                 display: none;
             }
             .rollButton {
-                width: 400px;
-                height: 150px;
                 font-size: large;
             }
             .playArea {
