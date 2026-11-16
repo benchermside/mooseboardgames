@@ -139,6 +139,9 @@ class UreClient {
                         cell.lastElementChild.classList.add("hidden");
                     }
                 }
+                if ([3,7,13].includes(cellIdInt)) {
+                    cell.classList.add("flower");
+                }
             }
         });
         const coins = this.rootElement.querySelectorAll('.coin');
