@@ -1,0 +1,6 @@
+
+To run ur locally, go into the ur folder on 2 terminal wondows.
+npm run serve
+npm start
+On one, run npm run serve
+On another run npm run start

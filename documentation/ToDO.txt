@@ -1,0 +1,6 @@
+Some TODO 
+-Ur should have a flower in the flower squares visually.
+   with the squares being 0 indexed, 3 on both players, 7, and 13 for both players
+-The dice should show who's turn it inside
+-How meany unplaced Pieces and escaped pieces each player has
+should be displayed. 
