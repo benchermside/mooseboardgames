@@ -37,3 +37,10 @@ spikes/aws/timings.jsonl
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Terraform (infra/). Commit .terraform.lock.hcl; state lives in S3.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+infra/modules/site/.build/
