@@ -31,3 +31,11 @@ build:
 # Build siteAPI and upload deployment.zip to the Lambda function
 deploy: build
     cd {{site_api}}; aws lambda update-function-code --function-name {{site_api_function_name}} --zip-file fileb://deployment.zip
+
+# Show what Terraform would change in AWS (changes nothing). env: dev
+infra-plan env="dev":
+    cd infra/envs/{{env}}; terraform plan
+
+# Apply Terraform changes to AWS, after showing the plan and asking. env: dev
+infra-apply env="dev":
+    cd infra/envs/{{env}}; terraform apply

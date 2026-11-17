@@ -163,8 +163,9 @@ There is no ALB, no NAT gateway, and no provisioned capacity, so idle cost is a 
   - Task role scoped to the match table.
   - Log group with retention.
 - **T3.** Extend the match table schema with status, task ARN, origin host, listening flag, timestamps, and result. Enable a stream if it's used for the `READY` transition.
-- **T4.** CloudFront `/m/*` behavior on the site's existing distribution (per D7): cache and origin request policies, and a placeholder origin.
+- **T4.** CloudFront `/m/*` behavior on the site's existing distribution (per D7): cache and origin request policies, and a placeholder origin. The origin must be **HTTP only, port 8000**; with HTTPS only, CloudFront rejects the router's rewrite (`502 LambdaValidationError`). Set the origin connection timeout to 2–3 s (see S4 in [RESULTS.md](../spikes/RESULTS.md)).
 - **T5.** Lambda@Edge router: build-time configuration, IAM role with read access to the match table, versioned deployment in us-east-1, association with the behavior.
+- **T5a.** Run S1 on the dev distribution, which Phase 0 deferred: launch a spike task by hand, then check the WebSocket upgrade, survival through 20 idle minutes, and that the router runs once per connection. If it fails, revisit D1/D2 before Phase 3.
 
 ### Phase 2 — Game server container
 
