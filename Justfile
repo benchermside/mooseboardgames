@@ -20,6 +20,10 @@ down:
 db-reset:
     {{compose}} run --rm db-init python local_db.py --reset
 
+# Play a game locally against yourself, e.g. `just play ur` (Ctrl+C to stop)
+play game:
+    npm run play -w games/{{game}}
+
 # Run all tests
 test:
     cd {{site_api}}; uv run pytest tests/ -v

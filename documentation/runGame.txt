@@ -1,6 +1,24 @@
+To run ur locally, playing both sides yourself:
 
-To run ur locally, go into the ur folder on 2 terminal wondows.
-npm run serve
-npm start
-On one, run npm run serve
-On another run npm run start
+1. Once, from the repo root, install dependencies:
+       npm install
+   (games/ur is an npm workspace, so this installs into the root node_modules.)
+
+2. From the repo root, run:
+       just play ur
+   (or, from games/ur, run: npm run play)
+
+   This starts, in one terminal:
+     - the boardgame.io game server on port 8001 (npm run serve)
+     - the Parcel dev server for the client on port 1234 (npm start)
+   and, once the client is ready, opens two browser tabs:
+     - http://localhost:1234/?player=0   player 0 (bottom row)
+     - http://localhost:1234/?player=1   player 1 (top row)
+
+   Take turns, switching between the tabs. A URL without ?player= is a
+   spectator view: it shows the board but can't make moves.
+
+3. Press Ctrl+C in that terminal to stop both servers.
+
+Matches are kept in memory by the game server. Reloading a tab keeps the game
+in progress; stopping and restarting starts a fresh game.
