@@ -1,5 +1,5 @@
-// Generates the piece and pile SVGs into images/generated/. Run by `npm run images`, which
-// `npm start` and `npm run build` do first.
+// Generates the piece and pile SVGs into images/generated/, plus piles.css with a class per pile
+// image (e.g. `.pile-0-3`). Run by `npm run images`, which `npm start` and `npm run build` do first.
 import { mkdirSync, writeFileSync } from "node:fs";
 
 const outDir = new URL("../images/generated/", import.meta.url);
@@ -79,9 +79,12 @@ function svg(lines) {
 }
 
 mkdirSync(outDir, { recursive: true });
+const pileRules = [];
 PLAYERS.forEach((player, x) => {
     writeFileSync(new URL(`player-${x}-piece.svg`, outDir), svg(pieceLines(player)));
     for (let y = 0; y <= PILE_POSITIONS.length; y++) {
         writeFileSync(new URL(`player-${x}-pile-${y}.svg`, outDir), svg(pileLines(player, y)));
+        pileRules.push(`.pile-${x}-${y} { background-image: url("player-${x}-pile-${y}.svg"); }`);
     }
 });
+writeFileSync(new URL("piles.css", outDir), pileRules.join("\n") + "\n");

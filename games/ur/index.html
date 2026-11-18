@@ -3,6 +3,7 @@
     <head>
         <title>boardgame.io Tutorial</title>
         <meta charset="utf-8" />
+        <link rel="stylesheet" href="images/generated/piles.css" />
     </head>
     <body>
         <div id="app"></div>
@@ -19,8 +20,9 @@
             .cell.flower {
                 background: url("images/tile-flower.svg") center / contain no-repeat;
             }
-            .empty {
-                visibility: hidden;
+            .cell.pileCell {
+                border-color: transparent;
+                background-color: transparent;
             }
             .clickable {
                 background-color: #d3d1c9;
@@ -49,11 +51,17 @@
             .coinArea.coins-disabled > .coin {
                 filter: grayscale(0.7) opacity(0.75);
             }
-            .piece {
+            .piece, .pile {
                 display: inline-block;
                 width: 50px;
                 height: 50px;
                 vertical-align: middle;
+            }
+            /* The image itself comes from a .pile-{player}-{count} class in piles.css. */
+            .pile {
+                background-position: center;
+                background-size: contain;
+                background-repeat: no-repeat;
             }
             .piece.player-0 {
                 background: url("images/generated/player-0-piece.svg") center / contain no-repeat;

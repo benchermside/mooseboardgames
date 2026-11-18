@@ -1,3 +1,1 @@
 Some TODO 
--How meany unplaced Pieces and escaped pieces each player has
-should be displayed. 
