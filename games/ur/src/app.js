@@ -17,9 +17,9 @@ class UreClient {
     }
     createBoard() {
         const rows = [[], [], []];
-        // Hidden circles for each player's pieces; show one by removing its "hidden" class.
-        const redCircle = `<div class="piece red hidden"></div>`;
-        const blueCircle = `<div class="piece blue hidden"></div>`;
+        // Hidden pieces for each player; show one by removing its "hidden" class.
+        const player0Piece = `<div class="piece player-0 hidden"></div>`;
+        const player1Piece = `<div class="piece player-1 hidden"></div>`;
         for (let i=12; i != 4; i = (i + 1)%16){
             if (i === 14){
                 
@@ -31,13 +31,13 @@ class UreClient {
                 rows[2].push(`<td class="cell empty" data-id="${i.toString() + "b"}"></td>`);                
             }
             else {
-                rows[0].push(`<td class="cell clickable" data-id="${i.toString() + "t"}">${redCircle}</td>`);
-                rows[2].push(`<td class="cell clickable" data-id="${i.toString() + "b"}">${blueCircle}</td>`);
+                rows[0].push(`<td class="cell clickable" data-id="${i.toString() + "t"}">${player1Piece}</td>`);
+                rows[2].push(`<td class="cell clickable" data-id="${i.toString() + "b"}">${player0Piece}</td>`);
             }
         }
 
         for (let i=11; i > 3; i = i - 1){
-            rows[1].push(`<td class="cell clickable" data-id="${i.toString()}">${redCircle}${blueCircle}</td>`);
+            rows[1].push(`<td class="cell clickable" data-id="${i.toString()}">${player1Piece}${player0Piece}</td>`);
         }
         for (let i = 0; i < 3; i++) {
             rows[i] = `<tr>${rows[i].join('')}</tr>`;

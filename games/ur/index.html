@@ -51,16 +51,18 @@
             }
             .piece {
                 display: inline-block;
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
+                width: 50px;
+                height: 50px;
                 vertical-align: middle;
+            }
+            .piece.player-0 {
+                background: url("images/player-0-piece.svg") center / contain no-repeat;
+            }
+            .piece.player-1 {
+                background: url("images/player-1-piece.svg") center / contain no-repeat;
             }
             .red {
                 background-color: red;
-            }
-            .blue {
-                background-color: blue;
             }
             .hidden {
                 display: none;
