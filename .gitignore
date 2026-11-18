@@ -14,6 +14,7 @@ node_modules/
 # Parcel (games/*)
 .parcel-cache/
 dist/
+games/ur/images/generated/
 
 # Lambda build artifacts
 package/
