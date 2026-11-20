@@ -81,7 +81,7 @@ Browser ──wss──▶ CloudFront (/m/*) ──[Lambda@Edge origin-request]�
 
 **CloudFront behavior for `/m/*`:**
 - Cache policy `CachingDisabled`.
-- An origin request policy forwarding the WebSocket handshake headers (`Sec-WebSocket-Key`, `-Version`, `-Protocol`, `-Extensions`) plus whatever the routing key needs.
+- An origin request policy forwarding the WebSocket handshake headers (`Sec-WebSocket-Key`, `-Version`, `-Protocol`, `-Extensions`) plus whatever the routing key needs. This is the AWS managed `AllViewerExceptHostHeader` policy, because the site distributions are on CloudFront's Free flat-rate plan, which doesn't allow custom origin request policies (those need the Business tier). The Free plan does allow WebSockets, Lambda@Edge (invocations billed separately), and up to 5 cache behaviors, with 1 M requests a month.
 - A placeholder custom origin, which Lambda@Edge overwrites per request.
 
 **Lambda@Edge router (origin-request):**

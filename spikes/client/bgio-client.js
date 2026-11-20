@@ -20,7 +20,14 @@ export function startClient({
     socketPathMode = 'path',
     pathMatchID = matchID,
 }) {
-    const socketOpts = { transports: ['websocket'], reconnection: false };
+    const socketOpts = {
+        transports: ['websocket'],
+        reconnection: false,
+        // Node's WebSocket sends no User-Agent, and the site's WAF (AWS managed
+        // common rule set, NoUserAgent_HEADER) blocks requests without one.
+        // Browsers always send one, so this only matters for Node clients.
+        extraHeaders: { 'User-Agent': 'mooseboardgames-spike-client' },
+    };
     if (socketPathMode === 'path') {
         socketOpts.path = `/m/${pathMatchID}/socket.io`;
     } else {

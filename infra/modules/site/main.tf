@@ -43,4 +43,5 @@ locals {
   api_role_name     = coalesce(var.api_role_name, "mooseboardgames-siteAPI-${var.env}")
   api_policy_name   = coalesce(var.api_policy_name, "mooseboardgames-siteAPIPolicy-${var.env}")
   oac_name          = coalesce(var.oac_name, "oac-${var.site_bucket_name}")
+  game_origin_id    = "game-server"
 }

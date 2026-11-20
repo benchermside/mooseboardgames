@@ -24,6 +24,15 @@ variable "site_bucket_name" {
   type        = string
 }
 
+variable "game_route" {
+  description = "The /m/* game-connection route, from the game_host module's `route` output, or null for none."
+  type = object({
+    router_arn  = string
+    origin_port = number
+  })
+  default = null
+}
+
 variable "site_web_acl_id" {
   description = "WAF web ACL attached to the site distribution, or null for none."
   type        = string

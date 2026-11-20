@@ -84,6 +84,62 @@ resource "aws_cloudfront_distribution" "site" {
     cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
   }
 
+  # --- /m/*: game connections, routed to each match's Fargate task. ---
+  # See documentation/fargate-host-design.md, "Connection path".
+
+  # A placeholder. The router replaces it on every request with the match's
+  # task. It must be HTTP only: CloudFront won't let the router switch an
+  # HTTPS-only origin to HTTP, and fails every request with a 502.
+  dynamic "origin" {
+    for_each = var.game_route == null ? [] : [var.game_route]
+    content {
+      origin_id   = local.game_origin_id
+      domain_name = "example.com"
+      # A new task's port can drop the first connection attempt. A short
+      # timeout makes CloudFront retry sooner (spike S4 outliers).
+      connection_timeout  = 2
+      connection_attempts = 3
+      custom_origin_config {
+        http_port              = origin.value.origin_port
+        https_port             = 443
+        origin_protocol_policy = "http-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
+    }
+  }
+
+  dynamic "ordered_cache_behavior" {
+    for_each = var.game_route == null ? [] : [var.game_route]
+    content {
+      path_pattern           = "/m/*"
+      target_origin_id       = local.game_origin_id
+      viewer_protocol_policy = "https-only"
+      allowed_methods        = ["GET", "HEAD"]
+      cached_methods         = ["GET", "HEAD"]
+      compress               = false
+      cache_policy_id        = data.aws_cloudfront_cache_policy.caching_disabled.id
+      # Forwards the WebSocket handshake headers and Socket.IO's query string.
+      # A managed policy, because the Free flat-rate plan doesn't allow custom ones.
+      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+      lambda_function_association {
+        event_type   = "origin-request"
+        lambda_arn   = ordered_cache_behavior.value.router_arn
+        include_body = false
+      }
+    }
+  }
+
+  # By default CloudFront remembers an origin error for 10 s, which would make a
+  # player who connects a moment too early wait 10 s more. These only affect
+  # origin errors; the site's S3 content doesn't produce them.
+  dynamic "custom_error_response" {
+    for_each = var.game_route == null ? [] : [502, 503, 504]
+    content {
+      error_code            = custom_error_response.value
+      error_caching_min_ttl = 0
+    }
+  }
+
   viewer_certificate {
     acm_certificate_arn      = data.aws_acm_certificate.main.arn
     ssl_support_method       = "sni-only"

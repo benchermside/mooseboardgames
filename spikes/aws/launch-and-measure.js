@@ -7,9 +7,17 @@
 //   --runs N   launch N tasks one after another and summarize
 //   --keep     leave the (last) task running, for S1. Stop it yourself after.
 //   --label X  tag the results, e.g. with the base image being tried
+//   --config F config file, relative to aws/ (default config.json)
 //
 // Reads aws/config.json (copy config.example.json). Uses your AWS CLI
 // credentials. Appends one JSON line per run to aws/timings.jsonl.
+//
+// To run against the real dev environment (design T5a), write its config
+// from Terraform and pass --config config.dev.json:
+//   terraform "-chdir=../infra/envs/dev" output -raw launch_config | Out-File -Encoding ascii aws/config.dev.json
+// (The quotes stop Windows PowerShell splitting the -chdir argument at the dot.)
+// That config sets "recordSchema": "real", so the match record uses the real
+// matches table's attributes (match_id, status, origin_host, task_arn).
 import { appendFileSync, readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { DeleteItemCommand, DynamoDBClient, PutItemCommand } from '@aws-sdk/client-dynamodb';
@@ -21,10 +29,12 @@ const { values: args } = parseArgs({
         runs: { type: 'string', default: '1' },
         keep: { type: 'boolean', default: false },
         label: { type: 'string', default: '' },
+        config: { type: 'string', default: 'config.json' },
     },
 });
-const configURL = new URL('./config.json', import.meta.url);
-const config = JSON.parse(readFileSync(configURL, 'utf8'));
+const configURL = new URL(`./${args.config}`, import.meta.url);
+// Strip a byte-order mark, which PowerShell may add when writing the file.
+const config = JSON.parse(readFileSync(configURL, 'utf8').replace(/^\uFEFF/, ''));
 const ecs = new ECSClient({ region: config.region });
 const ec2 = new EC2Client({ region: config.region });
 const dynamo = new DynamoDBClient({ region: config.region });
@@ -32,6 +42,22 @@ const dynamo = new DynamoDBClient({ region: config.region });
 const POLL_MS = 250;
 const READY_TIMEOUT_MS = 5 * 60_000;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// The spike's table and the real matches table name their attributes differently.
+const realSchema = config.recordSchema === 'real';
+const matchKey = matchID => (realSchema ? { match_id: { S: matchID } } : { matchID: { S: matchID } });
+function matchRecord(matchID, originHost, taskArn) {
+    if (realSchema) {
+        // The router only routes READY and IN_PROGRESS matches.
+        return {
+            ...matchKey(matchID),
+            status: { S: 'READY' },
+            origin_host: { S: originHost },
+            task_arn: { S: taskArn },
+        };
+    }
+    return { ...matchKey(matchID), originHost: { S: originHost }, taskArn: { S: taskArn } };
+}
 
 /** Launch one task and return its timings, in seconds since RunTask was sent. */
 async function launchOnce(keep) {
@@ -115,11 +141,7 @@ async function launchOnce(keep) {
     // What the task-state Lambda will do: record the origin for the router.
     await dynamo.send(new PutItemCommand({
         TableName: config.table,
-        Item: {
-            matchID: { S: matchID },
-            originHost: { S: originHost },
-            taskArn: { S: taskArn },
-        },
+        Item: matchRecord(matchID, originHost, taskArn),
     }));
     mark('originWritten');
 
@@ -162,7 +184,7 @@ async function launchOnce(keep) {
         console.log(`  Then stop it: ECS console > ${config.cluster} > Tasks > select > Stop.`);
     } else {
         await ecs.send(new StopTaskCommand({ cluster: config.cluster, task: taskArn, reason: 'spike run finished' }));
-        await dynamo.send(new DeleteItemCommand({ TableName: config.table, Key: { matchID: { S: matchID } } }));
+        await dynamo.send(new DeleteItemCommand({ TableName: config.table, Key: matchKey(matchID) }));
         console.log('  Task stopped.');
     }
     return result;

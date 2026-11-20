@@ -6,6 +6,7 @@ All of the site's AWS resources are defined here. Make changes in these files an
 |------|------------|
 | `bootstrap/` | The S3 bucket that stores Terraform's state. Run once. |
 | `modules/site/` | One environment: the HTML bucket and distribution, the siteAPI Lambda and its distribution, the DynamoDB tables, and DNS. |
+| `modules/game_host/` | Running one game-server task per match: the security group, ECR, ECS cluster and task definition, the matches table, and the Lambda@Edge router (code in `lambdas/router/`). The site module adds the `/m/*` route that uses them. |
 | `envs/dev/` | The dev environment (`dev.mooseboardgames.com`). |
 
 ## Prerequisites
@@ -44,6 +45,8 @@ Always read the plan before typing `yes`. Look for:
 ## What Terraform does not manage
 
 - **The siteAPI code.** Terraform owns the function's settings; `just deploy` uploads the code.
+- **The game-server image.** Terraform creates the ECR repository; `just push-image` builds and pushes the image. The router's code *is* managed here: change `lambdas/router/index.mjs`, then `just infra-apply`.
+- **Lambda@Edge log groups.** The router logs to `/aws/lambda/us-east-1.mooseboardgames-router-<env>` in whichever region served each request, so those groups are created on demand and have no retention limit.
 - **The HTML files** in the site bucket.
 - **The Route 53 hosted zone and the `*.mooseboardgames.com` certificate.** They're looked up, not managed, because every environment shares them.
 - **The WAF web ACLs** attached to the distributions. They were created by the console, and Terraform only references them.

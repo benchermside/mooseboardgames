@@ -13,7 +13,3 @@ output "api_function_name" {
 output "api_function_url" {
   value = aws_lambda_function_url.api.function_url
 }
-
-output "matches_table" {
-  value = aws_dynamodb_table.matches.name
-}

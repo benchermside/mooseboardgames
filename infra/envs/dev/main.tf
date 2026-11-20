@@ -50,8 +50,43 @@ module "site" {
   oac_name        = "oac-mooseboardgames.com-dev.s3.us-east-1.amazonaws.c-mqwsovbe3rm"
   api_role_name   = "mooseboardgames-siteAPI"
   api_policy_name = "mooseboardgames-siteAPIPolicy"
+
+  # /m/* on dev.mooseboardgames.com goes to the game servers.
+  game_route = module.game_host.route
+}
+
+module "game_host" {
+  source = "../../modules/game_host"
+  env    = "dev"
+}
+
+# The matches table started out in the site module.
+moved {
+  from = module.site.aws_dynamodb_table.matches
+  to   = module.game_host.aws_dynamodb_table.matches
 }
 
 output "site" {
   value = module.site
+}
+
+output "game_host" {
+  value = module.game_host
+}
+
+# Config for spikes/aws/launch-and-measure.js, to run spike S1 (design T5a)
+# against dev. Write it with:
+#   terraform output -raw launch_config > ../../../spikes/aws/config.dev.json
+output "launch_config" {
+  value = jsonencode({
+    region           = "us-east-1"
+    cluster          = module.game_host.cluster
+    taskDefinition   = module.game_host.task_definition_family
+    containerName    = module.game_host.container_name
+    subnets          = module.game_host.subnet_ids
+    securityGroup    = module.game_host.security_group_id
+    table            = module.game_host.matches_table
+    recordSchema     = "real"
+    cloudFrontDomain = "dev.mooseboardgames.com"
+  })
 }

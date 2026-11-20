@@ -43,3 +43,7 @@ infra-plan env="dev":
 # Apply Terraform changes to AWS, after showing the plan and asking. env: dev
 infra-apply env="dev":
     cd infra/envs/{{env}}; terraform apply
+
+# Build the game-server image (for now, spikes/server) and push it to ECR as :latest. env: dev
+push-image env="dev":
+    $repo = (terraform -chdir=infra/envs/{{env}} output -json game_host | ConvertFrom-Json).ecr_repository_url; $registry = $repo.Split('/')[0]; cmd /c "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $registry"; if ($LASTEXITCODE -eq 0) { docker buildx build --platform linux/arm64 --provenance=false -f spikes/server/Dockerfile -t "${repo}:latest" --push . }
