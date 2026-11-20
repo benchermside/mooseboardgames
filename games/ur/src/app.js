@@ -17,27 +17,28 @@ class UreClient {
     }
     createBoard() {
         const rows = [[], [], []];
-        // Hidden circles for each player's pieces; show one by removing its "hidden" class.
-        const redCircle = `<div class="piece red hidden"></div>`;
-        const blueCircle = `<div class="piece blue hidden"></div>`;
+        // Hidden pieces for each player; show one by removing its "hidden" class.
+        const player0Piece = `<div class="piece player-0 hidden"></div>`;
+        const player1Piece = `<div class="piece player-1 hidden"></div>`;
+        // Cells 14 and 15 aren't board spaces; they show piles of finished and remaining pieces.
+        const pile = `<div class="pile"></div>`;
         for (let i=12; i != 4; i = (i + 1)%16){
             if (i === 14){
-                
-                rows[0].push(`<td class="cell empty clickable" data-id="${i.toString() + "t"}"></td>`);
-                rows[2].push(`<td class="cell empty clickable" data-id="${i.toString() + "b"}"></td>`);
+                rows[0].push(`<td class="cell pileCell clickable" data-id="${i.toString() + "t"}">${pile}</td>`);
+                rows[2].push(`<td class="cell pileCell clickable" data-id="${i.toString() + "b"}">${pile}</td>`);
             }
             else if (i === 15){
-                rows[0].push(`<td class="cell empty" data-id="${i.toString() + "t"}"></td>`);
-                rows[2].push(`<td class="cell empty" data-id="${i.toString() + "b"}"></td>`);                
+                rows[0].push(`<td class="cell pileCell" data-id="${i.toString() + "t"}">${pile}</td>`);
+                rows[2].push(`<td class="cell pileCell" data-id="${i.toString() + "b"}">${pile}</td>`);
             }
             else {
-                rows[0].push(`<td class="cell clickable" data-id="${i.toString() + "t"}">${redCircle}</td>`);
-                rows[2].push(`<td class="cell clickable" data-id="${i.toString() + "b"}">${blueCircle}</td>`);
+                rows[0].push(`<td class="cell clickable" data-id="${i.toString() + "t"}">${player1Piece}</td>`);
+                rows[2].push(`<td class="cell clickable" data-id="${i.toString() + "b"}">${player0Piece}</td>`);
             }
         }
 
         for (let i=11; i > 3; i = i - 1){
-            rows[1].push(`<td class="cell clickable" data-id="${i.toString()}">${redCircle}${blueCircle}</td>`);
+            rows[1].push(`<td class="cell clickable" data-id="${i.toString()}">${player1Piece}${player0Piece}</td>`);
         }
         for (let i = 0; i < 3; i++) {
             rows[i] = `<tr>${rows[i].join('')}</tr>`;
@@ -100,7 +101,13 @@ class UreClient {
         cells.forEach(cell => {
             const cellId = cell.dataset.id;
             const row = cellId.charAt(cellId.length - 1);
-            if (!cell.classList.contains("empty")){
+            if (cell.classList.contains("pileCell")){
+                // 14 is where pieces finish; 15 stands in for the start (-1).
+                const player = row === "t" ? "1" : "0";
+                const count = parseInt(cellId) === 14 ? state.G[player].finishedPieces : state.G[player].remainingPieces;
+                cell.firstElementChild.className = `pile pile-${player}-${count}`;
+            }
+            else {
                 let cellIdInt;
                 if (row === "t"){
                     cellIdInt = parseInt(cellId.substring(0, cellId.length - 1));
