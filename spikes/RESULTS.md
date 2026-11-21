@@ -2,7 +2,7 @@
 
 Fill this in as you run each spike. When it's done, carry anything that changes a decision into [../documentation/fargate-host-design.md](../documentation/fargate-host-design.md).
 
-Date run: S3 on 2026-11-11; S2 and S4 on 2026-11-17. S1 was not run (see below).
+Date run: S3 on 2026-11-11; S2 and S4 on 2026-11-17; S1 on 2026-11-20, on the real dev distribution.
 
 ## S3: boardgame.io server internals (local)
 
@@ -56,27 +56,38 @@ Per-run ready times (s): 17.91, 32.54, 18.43, 17.64, 28.11.
 
 ## S1: WebSocket through CloudFront + Lambda@Edge → Fargate
 
-Status: **NOT RUN. Deferred to Phase 1.**
+Status: **PASS**, on 2026-11-20, against the real dev distribution (`dev.mooseboardgames.com`, design T5a), match `spike-mwlbia37`.
 
-The first attempts failed with `502 LambdaValidationError` because the distribution's origin was left at **HTTPS only**, and CloudFront doesn't let Lambda@Edge downgrade a request to HTTP. Once that was fixed, S2 and S4 passed, but the spike distribution was deleted before S1 ran. CloudFront supports WebSockets, and boardgame.io pings every 10 s, so the risk was judged low. S1 will run as the first end-to-end test on the real dev distribution once Phase 1's `/m/*` behavior is in place. If it fails, revisit D1/D2 (for example, an ALB or API Gateway WebSockets).
+Originally deferred: the first attempts failed with `502 LambdaValidationError` because the distribution's origin was left at **HTTPS only**, and CloudFront doesn't let Lambda@Edge downgrade a request to HTTP. Once that was fixed, S2 and S4 passed, but the spike distribution was deleted before S1 ran. CloudFront supports WebSockets, and boardgame.io pings every 10 s, so the risk was judged low. S1 will run as the first end-to-end test on the real dev distribution once Phase 1's `/m/*` behavior is in place. If it fails, revisit D1/D2 (for example, an ALB or API Gateway WebSockets).
 
 Already confirmed without S1: requests reach the task through CloudFront and the router (the S4 health checks); connecting to the task directly is blocked by the security group; router logs for the Philadelphia edge location land in us-east-1.
 
 | Check | Result |
 |-------|--------|
-| Connected over websocket through CloudFront (transport: websocket) | |
-| Move applied (roll) | |
-| Chat round trip before idle (ms) | |
-| Idle minutes survived, with pings and no disconnects | |
-| Chat round trip after idle (ms) | |
-| Direct `curl` to the task's origin host on port 8000 times out | |
-| Router logs: one line per connection, not one per message | |
-| Router log region(s) seen | |
+| Connected over websocket through CloudFront (transport: websocket) | PASS |
+| Move applied (roll) | PASS |
+| Chat round trip before idle (ms) | 41 (in the earlier quick run) |
+| Idle minutes survived, with pings and no disconnects | 20 (1201.7 s, 119 pings, 0 disconnects) |
+| Chat round trip after idle (ms) | 31 |
+| Direct `curl` to the task's origin host on port 8000 times out | not rechecked (confirmed during S4) |
+| Router logs: one line per connection, not one per message | not checked |
+| Router log region(s) seen | not checked (us-east-1 during S4) |
 
-Notes: ______
+End of the 20-minute run:
+
+```
+2026-11-20T22:02:46.915Z [+1201.67s] still idle: connected=true pings=119 disconnects=0
+2026-11-20T22:02:46.946Z [+1201.70s] chat round trip OK in 31 ms
+2026-11-20T22:02:46.947Z [+1201.70s] S1 RESULT: PASS
+```
+
+Notes:
+- **The site's WAF blocks clients without a User-Agent.** The first dev runs failed with `connect_error: websocket error` 0.1 s in: the AWS managed common rule set's `NoUserAgent_HEADER` rule returned 403, because Node's WebSocket sends no User-Agent. Browsers always send one, so real players aren't affected. Any Node client (tests, bots) must set one; `client/bgio-client.js` now does, via `extraHeaders`.
+- D1/D2 hold: no need for an ALB or API Gateway WebSockets.
 
 ## Design doc changes needed
 
 - T4: the `/m/*` origin must be **HTTP only, port 8000**. HTTPS only makes every routed request fail with `502 LambdaValidationError`. Try a 2–3 s origin connection timeout (see S4).
-- T5 or Phase 2: run S1's checks (WebSocket upgrade, 20-minute idle survival, one router call per connection) on the dev distribution before building the orchestration on top.
+- T5a: S1's checks passed on the dev distribution on 2026-11-20 (WebSocket upgrade, 20-minute idle survival). The one-router-call-per-connection check wasn't done.
+- Node clients must send a User-Agent, or the WAF blocks them (see S1 notes).
 - Debugging note: CloudFront writes Lambda@Edge validation errors to `/aws/cloudfront/LambdaEdge/<distribution ID>`, not to the function's own log group.
