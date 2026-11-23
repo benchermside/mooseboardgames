@@ -1,0 +1,11 @@
+# The build context is the whole repo; only send what the image needs.
+*
+!package.json
+!package-lock.json
+!game-server/package.json
+!game-server/src/**
+!lambdas/gameAPI/package.json
+# Every game's package.json and source. The browser-only files come along too
+# (they're small), but the server only imports each game's game.js.
+!games/*/package.json
+!games/*/src/**

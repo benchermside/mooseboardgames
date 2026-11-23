@@ -32,9 +32,9 @@ These are choices that seemed to have a clear best answer; each is easy to chang
 - **The container listens on port 8000** (not 80, so it can run as non-root). CloudFront allows custom-origin HTTP ports in the 1024–65535 range.
 - **Tasks run on ARM64 (Graviton) at 0.25 vCPU / 0.5 GB** to start; resize after load testing. Fargate Spot is not used, because an interruption would kill the match.
 - **Timeouts (all configurable):**
-  - Waiting room: if not all seats join within 10 minutes, the match is `CANCELLED`.
-  - Idle: if no move is made for 15 minutes, the match is `ABANDONED`.
-  - Hard maximum task lifetime: 4 hours.
+  - Waiting room: if not all seats join within 15 minutes, the match is `CANCELLED`.
+  - Idle: if no move is made for the game's idle timeout, the match is `ABANDONED`. Each game sets its own in [game-server/src/games.js](../game-server/src/games.js), because some games have long turns; the default is 15 minutes.
+  - Maximum lifetime: set per game in [game-server/src/games.js](../game-server/src/games.js) (Ur: 4 hours). The container ends the match `ABANDONED` when it's reached, and records the deadline as `expires_at` for the reaper.
   - Shutdown grace period after game over: 30 seconds.
 
 ## Architecture
@@ -42,13 +42,7 @@ These are choices that seemed to have a clear best answer; each is easy to chang
 ### Components
 
 - **Lobby backend (existing, Lambda + DynamoDB).** Creates the match record and issues per-seat player credentials. Additions: it launches the task and exposes match status to clients.
-- **Match table (DynamoDB).** Either the lobby's existing table or a new one, with these new attributes:
-  - status
-  - task ARN
-  - origin host
-  - listening flag
-  - timestamps
-  - final result
+- **Match table (DynamoDB).** A separate `matches` table, one record per match. [match-record.md](match-record.md) lists every attribute and status, and who writes and reads each.
 - **Game server container (Fargate).** A boardgame.io server hosting exactly one match.
 - **Orchestration Lambdas.** Launch, task-state handler, cancel, and reaper.
 - **CloudFront `/m/*` behavior plus Lambda@Edge router.** Terminates TLS and routes each connection to the right task.
@@ -118,7 +112,7 @@ Because the game server is the task's only essential container, its exit stops t
 - If the match record has no terminal status, mark it `ABORTED` (this is the crash path, per D4).
 - Clear the origin host so the router stops routing to the old task.
 
-**Reaper (EventBridge schedule, every 15 minutes).** Stops any task tagged with a match ID that is past its hard maximum lifetime, or whose match record is already terminal. This catches hung processes and anything the other paths miss.
+**Reaper (EventBridge schedule, every 15 minutes).** Stops any task tagged with a match ID whose match record is past its `expires_at` (the game's maximum lifetime, written by the container), or is already terminal. A task with no `expires_at` (it never got as far as listening) is stopped after a fixed fallback, such as 1 hour from its start. This catches hung processes and anything the other paths miss.
 
 ### Client
 
@@ -169,10 +163,15 @@ There is no ALB, no NAT gateway, and no provisioned capacity, so idle cost is a 
 
 ### Phase 2 — Game server container
 
-- **T6.** Entrypoint. Read `MATCH_ID`, load the match record, seed the boardgame.io match with its credentials, start the server on the per-match path, and set `listening`.
-- **T7.** Activity-tracking storage wrapper and watchdog: game over, idle, and waiting-room timeouts, each writing its terminal status before exit.
-- **T8.** SIGTERM handler and the graceful shutdown sequence.
-- **T9.** Container image build: one image for all games (per D8), non-root user, small base image.
+*Done, and run on dev on 2026-11-23:*
+- *The task answered through `dev.mooseboardgames.com` 23 s after `RunTask`.*
+- *Both seats connected and the record went to `IN_PROGRESS`.*
+- *`StopTask` mid-game recorded `ABORTED`, and the container exited 0 within 10 ms of the signal.*
+
+- **T6.** Entrypoint. Read `MATCH_ID`, load the match record, seed the boardgame.io match with its credentials, start the server on the per-match path, and set `listening`. *Done: [game-server/](../game-server/).*
+- **T7.** Activity-tracking storage wrapper and watchdog: game over, idle, and waiting-room timeouts, each writing its terminal status before exit. *Done: [game-server/src/lifecycle.js](../game-server/src/lifecycle.js). The container also sets `IN_PROGRESS` once every seat is connected, which ends the waiting room. Timeouts are set by environment variables (see [main.js](../game-server/src/main.js)).*
+- **T8.** SIGTERM handler and the graceful shutdown sequence. *Done: a stop signal records `CANCELLED` while waiting or `ABORTED` mid-game, unless an ending is already recorded, then exits at once (well inside the task's 30 s stop timeout).*
+- **T9.** Container image build: one image for all games (per D8), non-root user, small base image. *Done: [game-server/Dockerfile](../game-server/Dockerfile), about 69 MB on `node:22-alpine`.*
 
 ### Phase 3 — Orchestration
 

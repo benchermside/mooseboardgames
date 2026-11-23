@@ -17,10 +17,14 @@
 //   terraform "-chdir=../infra/envs/dev" output -raw launch_config | Out-File -Encoding ascii aws/config.dev.json
 // (The quotes stop Windows PowerShell splitting the -chdir argument at the dot.)
 // That config sets "recordSchema": "real", so the match record uses the real
-// matches table's attributes (match_id, status, origin_host, task_arn).
+// matches table's attributes (documentation/match-record.md). The real game
+// server (game-server/) reads its record when it starts, so the script writes
+// it before RunTask: an Ur match with seat credentials cred0 and cred1 (the
+// ws-client defaults). Once the task's DNS name is known, it sets origin_host
+// and READY, standing in for the Phase 3 Lambdas.
 import { appendFileSync, readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { DeleteItemCommand, DynamoDBClient, PutItemCommand } from '@aws-sdk/client-dynamodb';
+import { DeleteItemCommand, DynamoDBClient, PutItemCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
 import { DescribeNetworkInterfacesCommand, EC2Client } from '@aws-sdk/client-ec2';
 import { DescribeTasksCommand, ECSClient, RunTaskCommand, StopTaskCommand } from '@aws-sdk/client-ecs';
 
@@ -46,17 +50,45 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 // The spike's table and the real matches table name their attributes differently.
 const realSchema = config.recordSchema === 'real';
 const matchKey = matchID => (realSchema ? { match_id: { S: matchID } } : { matchID: { S: matchID } });
-function matchRecord(matchID, originHost, taskArn) {
-    if (realSchema) {
-        // The router only routes READY and IN_PROGRESS matches.
-        return {
+/** Real schema only: what the lobby writes before the task is launched. */
+async function createRealRecord(matchID) {
+    const now = new Date().toISOString();
+    await dynamo.send(new PutItemCommand({
+        TableName: config.table,
+        Item: {
             ...matchKey(matchID),
-            status: { S: 'READY' },
-            origin_host: { S: originHost },
-            task_arn: { S: taskArn },
-        };
+            status: { S: 'LAUNCHING' },
+            game_name: { S: 'ur' },
+            num_players: { N: '2' },
+            credentials: { M: { 0: { S: 'cred0' }, 1: { S: 'cred1' } } },
+            created_at: { S: now },
+            updated_at: { S: now },
+        },
+    }));
+}
+
+/** Record the task's origin for the router (the task-state Lambda's job). */
+async function writeOrigin(matchID, originHost, taskArn) {
+    if (!realSchema) {
+        await dynamo.send(new PutItemCommand({
+            TableName: config.table,
+            Item: { ...matchKey(matchID), originHost: { S: originHost }, taskArn: { S: taskArn } },
+        }));
+        return;
     }
-    return { ...matchKey(matchID), originHost: { S: originHost }, taskArn: { S: taskArn } };
+    // The router only routes READY and IN_PROGRESS matches.
+    await dynamo.send(new UpdateItemCommand({
+        TableName: config.table,
+        Key: matchKey(matchID),
+        UpdateExpression: 'SET origin_host = :host, task_arn = :arn, #status = :ready, updated_at = :now',
+        ExpressionAttributeNames: { '#status': 'status' },
+        ExpressionAttributeValues: {
+            ':host': { S: originHost },
+            ':arn': { S: taskArn },
+            ':ready': { S: 'READY' },
+            ':now': { S: new Date().toISOString() },
+        },
+    }));
 }
 
 /** Launch one task and return its timings, in seconds since RunTask was sent. */
@@ -73,7 +105,10 @@ async function launchOnce(keep) {
     };
 
     console.log(`\nLaunching match ${matchID}`);
-    const run = await ecs.send(new RunTaskCommand({
+    if (realSchema) {
+        await createRealRecord(matchID);
+    }
+    const run =await ecs.send(new RunTaskCommand({
         cluster: config.cluster,
         taskDefinition: config.taskDefinition,
         launchType: 'FARGATE',
@@ -139,10 +174,7 @@ async function launchOnce(keep) {
     }
 
     // What the task-state Lambda will do: record the origin for the router.
-    await dynamo.send(new PutItemCommand({
-        TableName: config.table,
-        Item: matchRecord(matchID, originHost, taskArn),
-    }));
+    await writeOrigin(matchID, originHost, taskArn);
     mark('originWritten');
 
     // READY: the container answers through CloudFront and Lambda@Edge.

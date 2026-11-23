@@ -24,6 +24,7 @@ TABLES = {
     "mooseboardgames-user-dev": "user_id",
     "mooseboardgames-username-dev": "username",
     "mooseboardgames-session-dev": "session_id",
+    "mooseboardgames-matches-dev": "match_id",
 }
 
 # The routes currently hard-code this user until authentication is wired up.

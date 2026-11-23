@@ -1,0 +1,16 @@
+{
+  "name": "@mooseboardgames/game-server",
+  "private": true,
+  "type": "module",
+  "description": "The boardgame.io server that hosts one match per Fargate task. See documentation/fargate-host-design.md.",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.700.0",
+    "@aws-sdk/lib-dynamodb": "^3.700.0",
+    "boardgame.io": "^0.50.2"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "create-match": "node scripts/create-match.js"
+  }
+}

@@ -2,6 +2,7 @@
   "name": "mooseboardgames",
   "private": true,
   "workspaces": [
+    "game-server",
     "games/ur",
     "lambdas/gameAPI"
   ]
