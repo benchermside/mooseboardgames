@@ -21,4 +21,12 @@ To run ur locally, playing both sides yourself:
 3. Press Ctrl+C in that terminal to stop both servers.
 
 Matches are kept in memory by the game server. Reloading a tab keeps the game
-in progress; stopping and restarting starts a fresh game.
+in progress; stopping and restarting starts a fresh game. The game server
+restarts by itself (node --watch) when you save game.js or server.js, so
+saving either one also starts a fresh game.
+
+Other games work the same way (e.g. `just play starvethefox`), but each game's
+client has its own port: ur uses 1234, starvethefox uses 1235. Give any new
+game its own port too. If two games share a port, the browser treats them as
+one site and can show the other game's cached page. All games' servers use
+port 8001, so only one game can run at a time.

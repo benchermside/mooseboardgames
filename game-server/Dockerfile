@@ -11,6 +11,7 @@ WORKDIR /app
 # of them are needed, even though only game-server's dependencies get installed.
 COPY package.json package-lock.json ./
 COPY game-server/package.json game-server/
+COPY games/starvethefox/package.json games/starvethefox/
 COPY games/ur/package.json games/ur/
 COPY lambdas/gameAPI/package.json lambdas/gameAPI/
 RUN npm ci --omit=dev --workspace game-server --include-workspace-root=false \

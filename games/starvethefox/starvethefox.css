@@ -1,0 +1,20 @@
+/* CSS for StarveTheFox. */
+
+table.board {
+    td.empty {}
+    td.cell {
+        border: 5px solid #555;
+        width: 50px;
+        height: 50px;
+        line-height: 50px;
+        text-align: center;
+        background-color: aliceblue;
+    }
+
+    td.cell.fox {
+        background-color: red;
+    }
+    td.cell.sheep {
+        background-color: yellow;
+    }
+}
