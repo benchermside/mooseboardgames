@@ -14,6 +14,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import zipfile
 from pathlib import Path
 
@@ -32,14 +33,28 @@ _REQUIREMENT_LINE = re.compile(r"^[A-Za-z0-9].*==")
 _SKIP_NAMES = {".deps-hash"}
 
 
+def _remove_dir(path: Path, attempts: int = 5) -> None:
+    """Delete path, retrying briefly: on Windows, OneDrive or VS Code can hold
+    a folder open for a moment, making the delete fail with Access is denied."""
+    for attempt in range(1, attempts + 1):
+        if not path.exists():
+            return
+        try:
+            shutil.rmtree(path)
+            return
+        except PermissionError:
+            if attempt == attempts:
+                raise
+            time.sleep(1)
+
+
 def install_dependencies() -> None:
     lock_hash = hashlib.sha256(LOCK_FILE.read_bytes()).hexdigest().upper()
     if HASH_FILE.exists() and HASH_FILE.read_text().strip() == lock_hash:
         print("Dependencies unchanged, skipping install")
         return
 
-    if PACKAGE_DIR.exists():
-        shutil.rmtree(PACKAGE_DIR)
+    _remove_dir(PACKAGE_DIR)
     exported = subprocess.run(
         ["uv", "export", "--no-dev", "--no-hashes", "--no-emit-project", "--frozen"],
         cwd=SITE_API, check=True, capture_output=True, text=True,
