@@ -37,6 +37,10 @@ build:
 deploy: build
     cd {{site_api}}; aws lambda update-function-code --function-name {{site_api_function_name}} --zip-file fileb://deployment.zip
 
+# Upload html/ (the lobby page) to the site and clear CloudFront's cached copies. env: dev
+deploy-site env="dev":
+    $site = (terraform -chdir=infra/envs/{{env}} output -json site | ConvertFrom-Json); aws s3 sync html/ "s3://$($site.site_bucket)" --delete; if ($LASTEXITCODE -eq 0) { aws cloudfront create-invalidation --distribution-id $site.site_distribution_id --paths "/*" --query "Invalidation.Id" --output text }
+
 # Show what Terraform would change in AWS (changes nothing). env: dev
 infra-plan env="dev":
     cd infra/envs/{{env}}; terraform plan

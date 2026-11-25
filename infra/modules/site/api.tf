@@ -120,8 +120,14 @@ resource "aws_lambda_function" "api" {
 resource "aws_lambda_function_url" "api" {
   function_name      = aws_lambda_function.api.function_name
   authorization_type = "NONE"
+  # The lobby page (on the site's domain) calls the API with the login cookie.
+  # Browsers allow that only if the API names the page's origin exactly (not
+  # "*") and allows credentials.
   cors {
-    allow_origins = ["*"]
+    allow_origins     = ["https://${var.site_domain}"]
+    allow_credentials = true
+    allow_methods     = ["GET", "POST", "PUT", "DELETE"]
+    allow_headers     = ["content-type"]
   }
 }
 

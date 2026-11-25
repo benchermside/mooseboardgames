@@ -4,18 +4,35 @@ import pytest
 
 import game_launcher
 from game_launcher import MATCHES_TABLE_NAME
+from http_utils import COOKIE_NAME, SESSION_TABLE_NAME
 from lambda_function import lambda_handler
 from routes.open_games import OPEN_GAMES_TABLE_NAME
 
+OWNER = "u_123456789"
+# Users with a logged-in session in every test (see the sessions fixture).
+USERS = [OWNER, "u_2", "u_3"]
 
-def _event(method: str, path: str, body: dict | None = None) -> dict:
-    """Build a Lambda Function URL (payload format 2.0) event."""
+
+@pytest.fixture(autouse=True)
+def sessions(dynamodb):
+    """Log in each of USERS: session s_<user_id>, which never expires."""
+    for user_id in USERS:
+        dynamodb.put_item(
+            TableName=SESSION_TABLE_NAME,
+            Item={"session_id": {"S": f"s_{user_id}"}, "user_id": {"S": user_id}},
+        )
+
+
+def _event(method: str, path: str, body: dict | None = None, user: str | None = OWNER) -> dict:
+    """Build a Lambda Function URL (payload format 2.0) event, sent by user
+    (logged in), or by nobody if user is None."""
     return {
         "version": "2.0",
         "rawPath": path,
         "requestContext": {"http": {"method": method, "path": path}},
         "body": json.dumps(body) if body is not None else None,
         "headers": {},
+        "cookies": [f"{COOKIE_NAME}=s_{user}"] if user is not None else [],
     }
 
 
@@ -194,14 +211,90 @@ def test_delete_game_owned_by_someone_else_returns_401(dynamodb):
 
 def test_join_then_leave_open_game(dynamodb):
     _put_game(dynamodb, "abc123", "u_123456789", ["u_123456789"])
-    result = lambda_handler(_event("PUT", "/open-games/abc123"), None)
+    result = lambda_handler(_event("PUT", "/open-games/abc123", user="u_2"), None)
     assert json.loads(result["body"])["message"] == "joined"
 
-    result = lambda_handler(_event("PUT", "/open-games/leave/abc123"), None)
+    result = lambda_handler(_event("PUT", "/open-games/leave/abc123", user="u_2"), None)
     assert json.loads(result["body"])["message"] == "left"
 
 
 def test_join_full_game(dynamodb):
     _put_game(dynamodb, "abc123", "u_123456789", ["u_123456789"], player_count=1)
-    result = lambda_handler(_event("PUT", "/open-games/abc123"), None)
+    result = lambda_handler(_event("PUT", "/open-games/abc123", user="u_2"), None)
     assert json.loads(result["body"])["message"] == "gameFull"
+
+
+@pytest.mark.parametrize("method, path", [
+    ("POST", "/open-games"),
+    ("DELETE", "/open-games/abc123"),
+    ("PUT", "/open-games/abc123"),
+    ("PUT", "/open-games/leave/abc123"),
+    ("GET", "/open-games/abc123/match"),
+])
+def test_open_game_changes_need_a_login(dynamodb, method, path):
+    _put_game(dynamodb, "abc123", OWNER, [OWNER])
+    body = {"game_name": "ur", "settings": json.dumps({"playerCount": 2})} if method == "POST" else None
+    result = lambda_handler(_event(method, path, body, user=None), None)
+    assert result["statusCode"] == 401
+
+
+def test_the_creator_is_the_owner_and_first_player(dynamodb):
+    result = _create_ur_game()
+    game_id = json.loads(result["body"])["open_game_id"]
+    item = dynamodb.get_item(TableName=OPEN_GAMES_TABLE_NAME, Key={"open_game_id": {"S": game_id}})["Item"]
+    assert item["owner_user_id"] == {"S": OWNER}
+    assert item["joined_users"] == {"SS": [OWNER]}
+
+
+# --- Getting the connection to the match (T12) ---
+
+def _put_match(dynamodb, match_id: str, status: str, num_players: int = 2) -> None:
+    dynamodb.put_item(
+        TableName=MATCHES_TABLE_NAME,
+        Item={
+            "match_id": {"S": match_id},
+            "status": {"S": status},
+            "credentials": {"M": {str(seat): {"S": f"cred{seat}"} for seat in range(num_players)}},
+        },
+    )
+
+
+def _connection(game_id: str, user: str) -> dict:
+    result = lambda_handler(_event("GET", f"/open-games/{game_id}/match", user=user), None)
+    assert result["statusCode"] == 200, result["body"]
+    return json.loads(result["body"])
+
+
+def test_no_connection_until_every_seat_is_taken(dynamodb):
+    _put_game(dynamodb, "og_1", OWNER, [OWNER], player_count=2)
+    _put_match(dynamodb, "og_1", "READY")
+    assert _connection("og_1", OWNER) == {"status": "WAITING_FOR_PLAYERS"}
+
+
+@pytest.mark.parametrize("status", ["CREATED", "LAUNCHING", "CANCELLED", "ABORTED"])
+def test_no_connection_unless_the_server_is_up(dynamodb, status):
+    _put_game(dynamodb, "og_1", OWNER, [OWNER, "u_2"])
+    _put_match(dynamodb, "og_1", status)
+    assert _connection("og_1", OWNER) == {"status": status}
+
+
+@pytest.mark.parametrize("status", ["READY", "IN_PROGRESS"])
+def test_each_player_gets_their_own_seat_once_ready(dynamodb, status):
+    _put_game(dynamodb, "og_1", "u_3", ["u_3", "u_2", OWNER], player_count=3)
+    _put_match(dynamodb, "og_1", status, num_players=3)
+    # Seats go in sorted order of user ID.
+    for seat, user in enumerate(sorted(["u_3", "u_2", OWNER])):
+        assert _connection("og_1", user) == {
+            "status": status,
+            "match_id": "og_1",
+            "path": "/m/og_1",
+            "player_id": str(seat),
+            "credentials": f"cred{seat}",
+        }
+
+
+def test_only_players_in_the_game_get_a_connection(dynamodb):
+    _put_game(dynamodb, "og_1", OWNER, [OWNER, "u_2"])
+    _put_match(dynamodb, "og_1", "READY")
+    result = lambda_handler(_event("GET", "/open-games/og_1/match", user="u_3"), None)
+    assert result["statusCode"] == 400

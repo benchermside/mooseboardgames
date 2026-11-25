@@ -5,12 +5,18 @@
 // the caller checks ok (or status) and decides what to do about them. On an
 // error the lambda puts a human-readable message in body.error.
 
-// When the page is served locally (see local/README.md), talk to the local
-// gateway; otherwise talk to the real API (no trailing slash).
-// FIXME: point the non-local URL at the real API Gateway URL.
-const API_BASE_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-    ? "http://localhost:3000"
-    : "https://example.execute-api.us-east-1.amazonaws.com";
+// The API that goes with the site serving this page (no trailing slash).
+// Locally (see local/README.md) that's the local gateway.
+const API_BASE_URLS = {
+    "localhost": "http://localhost:3000",
+    "127.0.0.1": "http://localhost:3000",
+    "dev.mooseboardgames.com": "https://dev-api.mooseboardgames.com",
+    "mooseboardgames.com": "https://api.mooseboardgames.com",
+};
+const API_BASE_URL = API_BASE_URLS[location.hostname];
+if (API_BASE_URL === undefined) {
+    throw new Error(`No API is set up for pages served from ${location.hostname}`);
+}
 
 
 /**
@@ -27,7 +33,7 @@ const API_BASE_URL = (location.hostname === "localhost" || location.hostname ===
 async function callAPI(method, path, body) {
     const options = {
         method: method,
-        credentials: "include",  // send the cookie_id cookie
+        credentials: "include",  // send the session cookie
     };
     if (body !== undefined) {
         options.headers = {"Content-Type": "application/json"};
@@ -117,9 +123,25 @@ async function leaveOpenGame(openGameId) {
 
 
 /**
+ * Get what you need to connect to an open game's match, once it can start.
+ *
+ * On success body is {status}. Once every seat is taken and the game server
+ * is up (status "READY" or "IN_PROGRESS"), it also has match_id, path (where
+ * the boardgame.io client connects, e.g. "/m/<match_id>"), player_id (your
+ * seat) and credentials (your seat's secret). Before that, status is
+ * "WAITING_FOR_PLAYERS" or the server's start-up status ("CREATED",
+ * "LAUNCHING"), so ask again in a few seconds. Any other status means the
+ * match is over.
+ */
+async function getMatchConnection(openGameId) {
+    return await callAPI("GET", `/open-games/${encodeURIComponent(openGameId)}/match`);
+}
+
+
+/**
  * Log in to an existing account.
  *
- * On success body is {user_id} and the API sets the cookie_id cookie. A wrong
+ * On success body is {user_id} and the API sets the session cookie. A wrong
  * username or password gets a 401, with the same body.error either way.
  */
 async function logIn(username, password) {
@@ -135,7 +157,7 @@ async function logIn(username, password) {
  *
  * username is 2-20 letters, digits, '_' or spaces (not starting or ending
  * with a space); password is 8-64 characters. On success body is {user_id}
- * and the API sets the cookie_id cookie. A bad field or a username that is
+ * and the API sets the session cookie. A bad field or a username that is
  * already taken gets a 400, and body.error explains why.
  */
 async function signUp(username, email, password) {

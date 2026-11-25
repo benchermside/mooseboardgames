@@ -21,7 +21,7 @@ create open game
         the game server for it (src/game_launcher.py), so the server is ready by
         the time the seats fill. The open_game_id is also the match_id.
     INPUT:
-        cookie_id (headder)
+        session cookie (header) [must be logged in]
         game_name (body) [game server's name for the game, e.g. "ur"]
         settings  (body) [json, must include playerCount]
     OUTPUT:
@@ -33,7 +33,7 @@ deleate open game
     VERB: DELETE
     DESCRIPTION: deleates an open game that you started
     INPUT:
-        cookie_id (headder)
+        session cookie (header) [must be logged in]
         open_game_id (path)
     OUTPUT:
 
@@ -43,7 +43,7 @@ join open game
     VERB: PUT
     DESCRIPTION: joins an open game
     INPUT:
-        cookie_id (headder)
+        session cookie (header) [must be logged in]
         open_game_id (path)
     OUTPUT:
         
@@ -55,8 +55,27 @@ leave open game
     VERB: PUT
     DESCRIPTION: leave an open game
     INPUT:
-        cookie_id (headder)
+        session cookie (header) [must be logged in]
         open_game_id (path)
+
+
+get match connection
+    PATH: /open-games/{open_game_id}/match
+    VERB: GET
+    DESCRIPTION: what a player needs to connect to their open game's match. Only
+        once every seat is taken and the game server is READY (or IN_PROGRESS)
+        does it include the connect info; before that the lobby asks again.
+        Seats go to the joined players in sorted order of user_id.
+    INPUT:
+        session cookie (header) [must be logged in, and have joined the game]
+        open_game_id (path)
+    OUTPUT:
+        status (body) [WAITING_FOR_PLAYERS, or the match's status]
+        when status is READY or IN_PROGRESS, also:
+            match_id    (body) [same as open_game_id]
+            path        (body) [where the game client connects: /m/{match_id}]
+            player_id   (body) [your seat: "0", "1", ...]
+            credentials (body) [your seat's secret, for boardgame.io]
 
 
 get online friends

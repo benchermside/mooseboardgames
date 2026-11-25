@@ -20,6 +20,7 @@ _ROUTES: dict[tuple[str, str], Callable] = {
     ("DELETE", "/open-games/{open_game_id}"): open_games.delete_open_game,
     ("PUT",    "/open-games/{open_game_id}"): open_games.join_open_game,
     ("PUT",    "/open-games/leave/{open_game_id}"): open_games.leave_open_game,
+    ("GET",    "/open-games/{open_game_id}/match"): open_games.get_match_connection,
     ("POST",   "/account-login"):             account_lambda.login,
     ("POST",   "/account-signup"):            account_lambda.create_user,
     ("POST",   "/account-logout"):            account_lambda.logout,

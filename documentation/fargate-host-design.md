@@ -182,7 +182,10 @@ There is no ALB, no NAT gateway, and no provisioned capacity, so idle cost is a 
 - **T11.** Record the task's origin host and set `READY`. *Built, without a task-state Lambda: the container finds its own public DNS name at startup ([origin.js](../game-server/src/origin.js)) and writes it with `listening` and `READY` in one update.*
   - *If startup fails, the container marks the match `ABORTED` itself. Crashes after that are left to the reaper (T14).*
   - *Running locally, there's no public name, so `origin_host` isn't set; the match still becomes `READY`.*
-- **T12.** Lobby tells waiting players the match is `READY`, with the connect URL and each player's own credential.
+- **T12.** Lobby tells waiting players the match is `READY`, with the connect URL and each player's own credential. *Built as `GET /open-games/{id}/match` in [open_games.py](../lambdas/siteAPI/src/routes/open_games.py), for the lobby page to poll (`getMatchConnection` in [callAPI.js](../html/callAPI.js); the page doesn't call it yet).*
+  - *It hands out the path, seat and credential only once every seat in the open game is taken and the match is `READY` or `IN_PROGRESS`. Otherwise it returns just the status.*
+  - *Seats go to players in sorted order of user ID, so nothing extra is stored.*
+  - *The open-games routes now use the real login (the session cookie) instead of hard-coded user IDs.*
 - **T13.** Lobby cancel path: `StopTask` and set `CANCELLED`.
 - **T14.** Reaper Lambda on an EventBridge schedule: stops overdue tasks, and marks matches whose task has stopped `ABORTED`.
 

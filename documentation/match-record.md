@@ -2,7 +2,7 @@
 
 One item per match in the matches table (`mooseboardgames-matches-<env>`, partition key `match_id`). It's how the pieces of the Fargate game host coordinate: none of them call each other, they read and write this record. See [fargate-host-design.md](fargate-host-design.md) for the overall design.
 
-The lobby creates the record when a player creates an open game, so the game server starts while the waiting room fills. The lobby makes every seat's credential at that point, before anyone has joined, and gives each player only their own when they take a seat.
+The lobby creates the record when a player creates an open game, so the game server starts while the waiting room fills. The lobby makes every seat's credential at that point, before anyone has joined. Once every seat is taken and the match is `READY`, it gives each player only their own, through `GET /open-games/{id}/match` (seats go to players in sorted order of user ID).
 
 ## Attributes
 

@@ -29,6 +29,17 @@ def get_ecs():
     return _ecs
 
 
+def get_match(match_id: str) -> dict | None:
+    """The match record, in DynamoDB format, or None if there isn't one."""
+    response = get_connection().get_item(
+        TableName=MATCHES_TABLE_NAME,
+        Key={"match_id": {"S": match_id}},
+        # The game server may have marked it READY moments ago.
+        ConsistentRead=True,
+    )
+    return response.get("Item")
+
+
 def launch_config() -> dict | None:
     """The game server settings, or None if launching isn't configured."""
     if not os.environ.get("GAME_CLUSTER"):
