@@ -53,6 +53,8 @@ module "site" {
 
   # /m/* on dev.mooseboardgames.com goes to the game servers.
   game_route = module.game_host.route
+  # Creating an open game starts its game server.
+  game_launch = module.game_host.launch
 }
 
 module "game_host" {

@@ -17,13 +17,16 @@ get open games
 create open game
     PATH: /open-games
     VERB: POST
-    DESCRIPTION: starts a new open-game
+    DESCRIPTION: starts a new open-game. Also creates its match record and starts
+        the game server for it (src/game_launcher.py), so the server is ready by
+        the time the seats fill. The open_game_id is also the match_id.
     INPUT:
         cookie_id (headder)
-        game_name (body) [enum]
-        settings  (body) [json]
+        game_name (body) [game server's name for the game, e.g. "ur"]
+        settings  (body) [json, must include playerCount]
     OUTPUT:
         open_game_id (body)
+        503 if the game server couldn't be started (no open game is created)
 
 deleate open game
     PATH: /open-games/{open_game_id}
@@ -107,3 +110,17 @@ log out
     INPUT:
         cookie_id
         session_id
+
+
+==== Lambdas that are not part of the site API ====
+
+route match connection
+    NAME: mooseboardgames-router-dev (Lambda@Edge)
+    CODE: lambdas/router/index.mjs   (deployed by infra/modules/game_host/router.tf)
+    TRIGGER: CloudFront origin request on dev.mooseboardgames.com/m/*
+    DESCRIPTION: sends a player's connection to the Fargate task hosting their match
+        reads the match's status and origin_host; only READY and IN_PROGRESS are routed.
+    INPUT:
+        match_id (from the path /m/{match_id}/...)
+    OUTPUT:
+        request forwarded to the task, or 404 (no such match) / 503 (match not ready)

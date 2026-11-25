@@ -65,6 +65,13 @@ resource "aws_iam_role_policy_attachment" "api_tables" {
   policy_arn = aws_iam_policy.api.arn
 }
 
+# Creating an open game starts its game-server task (T10).
+resource "aws_iam_role_policy_attachment" "api_launch_games" {
+  count      = var.game_launch == null ? 0 : 1
+  role       = aws_iam_role.api.name
+  policy_arn = var.game_launch.policy_arn
+}
+
 resource "aws_iam_role_policy_attachment" "api_logs" {
   role       = aws_iam_role.api.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
@@ -82,7 +89,22 @@ resource "aws_lambda_function" "api" {
   handler       = "lambda_function.lambda_handler"
   architectures = ["arm64"]
   memory_size   = 128
-  timeout       = 3
+  # Creating an open game waits for RunTask, which usually takes under a second.
+  timeout = 10
+
+  # Game-server settings for lambdas/siteAPI/src/game_launcher.py.
+  dynamic "environment" {
+    for_each = var.game_launch == null ? [] : [var.game_launch]
+    content {
+      variables = {
+        GAME_CLUSTER         = environment.value.cluster
+        GAME_TASK_DEFINITION = environment.value.task_definition
+        GAME_CONTAINER_NAME  = environment.value.container_name
+        GAME_SUBNETS         = join(",", environment.value.subnet_ids)
+        GAME_SECURITY_GROUP  = environment.value.security_group_id
+      }
+    }
+  }
 
   filename         = data.archive_file.api_placeholder.output_path
   source_code_hash = data.archive_file.api_placeholder.output_base64sha256

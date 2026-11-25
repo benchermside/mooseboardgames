@@ -28,3 +28,21 @@ tables
         session_id (PK)
         user_id
         expire_time
+
+
+    matches  [one record per live match; full details in documentation/match-record.md]
+        match_id  (type string) (PK)
+        status  (type enum) [CREATED, LAUNCHING, READY, IN_PROGRESS, ENDED, ABANDONED, CANCELLED, ABORTED]
+        game_name  (type string) [boardgame.io game name, e.g. "ur"]
+        num_players  (type number)
+        setup_data  (type map) [optional]
+        credentials  (type map seat -> string)
+        task_arn  (type string)
+        launch_error  (type string) [only if the task could not be started]
+        listening  (type boolean)
+        expires_at  (type timestamp)
+        origin_host  (type string)
+        result  (type map) [optional]
+        created_at  (type timestamp)
+        updated_at  (type timestamp)
+        listening_at  (type timestamp)

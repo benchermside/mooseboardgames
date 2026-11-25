@@ -44,7 +44,7 @@ These are choices that seemed to have a clear best answer; each is easy to chang
 - **Lobby backend (existing, Lambda + DynamoDB).** Creates the match record and issues per-seat player credentials. Additions: it launches the task and exposes match status to clients.
 - **Match table (DynamoDB).** A separate `matches` table, one record per match. [match-record.md](match-record.md) lists every attribute and status, and who writes and reads each.
 - **Game server container (Fargate).** A boardgame.io server hosting exactly one match.
-- **Orchestration Lambdas.** Launch, task-state handler, cancel, and reaper.
+- **Orchestration Lambdas.** Task-state handler and reaper. (Launching and cancelling are done by the lobby itself.)
 - **CloudFront `/m/*` behavior plus Lambda@Edge router.** Terminates TLS and routes each connection to the right task.
 
 ### Match lifecycle (state machine)
@@ -59,8 +59,8 @@ The lobby never shows a connect URL to players until the match is `READY`.
 
 ### Launch sequence
 
-1. A player opens a match in the lobby. The lobby writes a `CREATED` record containing the game name, seat count, setup data, and per-seat credentials.
-2. The launch Lambda calls `RunTask`. It passes only `MATCH_ID` as a container environment override, and tags the task with the match ID. It records the task ARN and sets status to `LAUNCHING`.
+1. A player creates an open game in the lobby. The lobby writes a `CREATED` record containing the game name, seat count, setup data, and per-seat credentials.
+2. In the same request, the lobby calls `RunTask`. It passes only `MATCH_ID` as a container environment override, and tags the task with the match ID. It records the task ARN and sets status to `LAUNCHING`.
 3. The container boots and reads the match record from DynamoDB. It seeds the match into boardgame.io's in-memory storage under the lobby-assigned match ID, starts the server, and sets `listening = true` on the match record.
 4. Independently, an EventBridge rule on ECS Task State Change (`RUNNING`) invokes the task-state Lambda. That Lambda looks up the task's ENI, gets its public DNS name (D6), and writes it to the match record as the origin host.
    - This has to happen outside the container: the ECS task metadata endpoint exposes only the private IP.
@@ -175,7 +175,11 @@ There is no ALB, no NAT gateway, and no provisioned capacity, so idle cost is a 
 
 ### Phase 3 — Orchestration
 
-- **T10.** Launch Lambda, triggered by the lobby: `RunTask` with overrides and tags, then record the task ARN and set `LAUNCHING`.
+- **T10.** Launch the task when the lobby creates a match: `RunTask` with overrides and tags, then record the task ARN and set `LAUNCHING`. *Built, without a separate Lambda: the lobby's "create open game" request does it directly, in [lambdas/siteAPI/src/game_launcher.py](../lambdas/siteAPI/src/game_launcher.py). The settings and permission come from [launch.tf](../infra/modules/game_host/launch.tf).*
+  - *The match ID is the open game's ID.*
+  - *If `RunTask` fails, the match becomes `ABORTED` with the reason in `launch_error`, no open game is created, and the request returns 503.*
+  - *Tasks are tagged `match_id` and started by `lobby`. The match ID is also `RunTask`'s idempotency token.*
+  - *Locally (`just dev`), launching isn't configured, so the match record is written but no task is started.*
 - **T11.** Task-state Lambda with an EventBridge rule:
   - On `RUNNING`: resolve the ENI's public DNS name and write the origin host.
   - On `STOPPED`: set `ABORTED` if no terminal status exists, and clear the origin host.

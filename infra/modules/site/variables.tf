@@ -24,6 +24,19 @@ variable "site_bucket_name" {
   type        = string
 }
 
+variable "game_launch" {
+  description = "What the siteAPI needs to start game-server tasks, from the game_host module's `launch` output, or null to not start any."
+  type = object({
+    cluster           = string
+    task_definition   = string
+    container_name    = string
+    subnet_ids        = list(string)
+    security_group_id = string
+    policy_arn        = string
+  })
+  default = null
+}
+
 variable "game_route" {
   description = "The /m/* game-connection route, from the game_host module's `route` output, or null for none."
   type = object({

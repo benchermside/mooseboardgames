@@ -17,7 +17,7 @@ data "archive_file" "router" {
   source {
     filename = "config.json"
     content = jsonencode({
-      table       = aws_dynamodb_table.matches.name
+      table       = local.matches_table_name
       tableRegion = data.aws_region.current.region
       originPort  = local.container_port
     })

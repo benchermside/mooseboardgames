@@ -13,8 +13,11 @@ os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
 os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ.pop("AWS_PROFILE", None)
+# Tests that launch game servers turn this on themselves (see test_routes.py).
+os.environ.pop("GAME_CLUSTER", None)
 
 import db
+from game_launcher import MATCHES_TABLE_NAME
 from http_utils import SESSION_TABLE_NAME
 from routes.account_lambda import USERS_TABLE_NAME, USERNAMES_TABLE_NAME
 from routes.open_games import OPEN_GAMES_TABLE_NAME
@@ -40,5 +43,6 @@ def dynamodb():
         _create_table(client, SESSION_TABLE_NAME, "session_id")
         _create_table(client, USERS_TABLE_NAME, "user_id")
         _create_table(client, USERNAMES_TABLE_NAME, "username")
+        _create_table(client, MATCHES_TABLE_NAME, "match_id")
         yield client
         db._connection = None

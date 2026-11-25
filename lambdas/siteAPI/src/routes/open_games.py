@@ -3,11 +3,23 @@ import json
 from db import get_connection, extract_from_type_dict, extract_from_type_list, DDB_dict_to_json, json_to_DDB_dict
 from http_utils import parse_json_body, BadRequest, Unauthorized
 from util import create_id
+from game_launcher import create_match
 
 OPEN_GAMES_TABLE_NAME = "mooseboardgames-open_games-dev"
 
 def _ok(body: dict|list) -> dict:
     return {"statusCode": 200, "headers": {"Content-Type": "application/json"}, "body": json.dumps(body)}
+
+
+def _player_count(settings: str) -> int:
+    """The number of seats, from an open game's settings (a JSON string)."""
+    try:
+        player_count = json.loads(settings)["playerCount"]
+    except (TypeError, ValueError, KeyError) as exc:
+        raise BadRequest("settings must be JSON with a playerCount.") from exc
+    if not isinstance(player_count, int) or player_count < 1:
+        raise BadRequest("playerCount must be a positive whole number.")
+    return player_count
 
 
 def get_open_games(event: dict, path_params: dict) -> dict:
@@ -38,6 +50,16 @@ def create_open_game(event: dict, path_params: dict) -> dict:
         "joined_users" : [user_id],
         "owner_user_id" : user_id,
     }
+
+    # Start the game server now, so it's ready by the time the seats fill.
+    # The match ID is the open game's ID.
+    player_count = _player_count(open_game["settings"])
+    if not create_match(open_game["open_game_id"], open_game["game_name"], player_count):
+        return {
+            "statusCode": 503,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": "Couldn't start a game server; try again."}),
+        }
 
     #add to database
     response = dynamodb.put_item(

@@ -3,7 +3,7 @@
 # table, so it's kept apart from the lobby's tables.
 
 resource "aws_dynamodb_table" "matches" {
-  name         = "mooseboardgames-matches-${var.env}"
+  name         = local.matches_table_name
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "match_id"
 

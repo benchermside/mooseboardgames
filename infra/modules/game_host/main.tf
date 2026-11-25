@@ -20,4 +20,7 @@ locals {
   name           = "mooseboardgames-game-server-${var.env}"
   container_name = "game-server"
   container_port = 8000
+  # A plain value, not the table resource's attribute, so the router bundle
+  # (router.tf) doesn't wait on, and get rebuilt after, every table change.
+  matches_table_name = "mooseboardgames-matches-${var.env}"
 }

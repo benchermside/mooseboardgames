@@ -26,6 +26,18 @@ output "security_group_id" {
   value = aws_security_group.tasks.id
 }
 
+# What the site module needs so the lobby can start game-server tasks (T10).
+output "launch" {
+  value = {
+    cluster           = aws_ecs_cluster.games.name
+    task_definition   = aws_ecs_task_definition.game_server.family
+    container_name    = local.container_name
+    subnet_ids        = data.aws_subnets.tasks.ids
+    security_group_id = aws_security_group.tasks.id
+    policy_arn        = aws_iam_policy.launch_tasks.arn
+  }
+}
+
 # What the site module needs to add the /m/* route.
 output "route" {
   value = {
