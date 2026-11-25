@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "game-server",
+    "games/starvethefox",
     "games/ur",
     "lambdas/gameAPI"
   ]

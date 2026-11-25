@@ -20,7 +20,7 @@ down:
 db-reset:
     {{compose}} run --rm db-init python local_db.py --reset
 
-# Play a game locally against yourself, e.g. `just play ur` (Ctrl+C to stop)
+# Play a game locally against yourself: `just play ur` or `just play starvethefox` (Ctrl+C to stop)
 play game:
     npm run play -w games/{{game}}
 

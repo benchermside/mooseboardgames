@@ -1,0 +1,22 @@
+{
+  "name": "@mooseboardgames/starvethefox",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "boardgame.io": "^0.50.2"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7",
+    "open-cli": "^9.0.0",
+    "parcel": "^2.16.4",
+    "process": "^0.11.10",
+    "wait-on": "^9.5.1"
+  },
+  "scripts": {
+    "start": "parcel index.html --port 1235",
+    "serve": "node --watch src/server.js",
+    "play": "concurrently --kill-others-on-fail -n server,client,browser \"npm:serve\" \"npm:start\" \"wait-on http://localhost:1235 && open-cli http://localhost:1235/?player=0 && open-cli http://localhost:1235/?player=1\"",
+    "build": "parcel build index.html --public-url /games/starvethefox/"
+  },
+  "browserslist": "defaults and supports async-functions"
+}
