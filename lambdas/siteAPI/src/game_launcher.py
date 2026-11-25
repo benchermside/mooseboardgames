@@ -80,7 +80,17 @@ def create_match(match_id: str, game_name: str, num_players: int) -> bool:
         _set_status(match_id, "ABORTED", {"launch_error": {"S": str(exc)}})
         return False
 
-    _set_status(match_id, "LAUNCHING", {"task_arn": {"S": task_arn}})
+    try:
+        _set_status(match_id, "LAUNCHING", {"task_arn": {"S": task_arn}})
+    except get_connection().exceptions.ConditionalCheckFailedException:
+        # The server already marked the match READY (it was very quick), or
+        # the match is over. Leave the status alone; just keep the task ARN.
+        get_connection().update_item(
+            TableName=MATCHES_TABLE_NAME,
+            Key={"match_id": {"S": match_id}},
+            UpdateExpression="SET task_arn = :task_arn, updated_at = :now",
+            ExpressionAttributeValues={":task_arn": {"S": task_arn}, ":now": {"S": _now()}},
+        )
     return True
 
 
@@ -118,8 +128,10 @@ def _run_task(config: dict, match_id: str) -> str:
 
 
 def _set_status(match_id: str, status: str, extra: dict) -> None:
-    """Set the match's status, plus other attributes (in DynamoDB format)."""
-    values = {":status": {"S": status}, ":now": {"S": _now()}}
+    """Move the match on from CREATED to status, and set other attributes (in
+    DynamoDB format). Raises ConditionalCheckFailedException if the match is
+    no longer CREATED, so this never undoes the game server's READY."""
+    values = {":status": {"S": status}, ":now": {"S": _now()}, ":created": {"S": "CREATED"}}
     sets = ["#status = :status", "updated_at = :now"]
     for name, value in extra.items():
         values[f":{name}"] = value
@@ -128,6 +140,7 @@ def _set_status(match_id: str, status: str, extra: dict) -> None:
         TableName=MATCHES_TABLE_NAME,
         Key={"match_id": {"S": match_id}},
         UpdateExpression="SET " + ", ".join(sets),
+        ConditionExpression="#status = :created",
         ExpressionAttributeNames={"#status": "status"},
         ExpressionAttributeValues=values,
     )

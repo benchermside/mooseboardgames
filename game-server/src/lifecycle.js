@@ -138,7 +138,7 @@ export class MatchLifecycle {
                 this.log('match already ended elsewhere; keeping that ending');
             }
         } catch (err) {
-            // Exiting non-zero lets the task-state Lambda mark it ABORTED.
+            // The match isn't marked over, so the reaper will mark it ABORTED.
             this.log(`could not record ${status}: ${err.message}`);
             exitCode = 1;
         }

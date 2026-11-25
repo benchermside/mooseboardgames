@@ -1,7 +1,7 @@
 // Container entrypoint: host the one match named by MATCH_ID, until it's over.
 //
 // Environment:
-//   MATCH_ID                        required; the launch Lambda sets it per task
+//   MATCH_ID                        required; the lobby sets it per task
 //   MATCHES_TABLE                   required; set in the task definition
 //   PORT                            default 8000
 //   AWS_REGION                      set by Fargate; defaults to us-east-1
@@ -13,11 +13,15 @@
 //   MAX_LIFETIME_SECONDS            the longest the match may run. Likewise
 //                                   normally unset: each game has its own.
 //   GAME_OVER_GRACE_SECONDS         default 30: how long to stay up after game over
+//   ECS_CONTAINER_METADATA_URI_V4   set by Fargate; used to find the task's public
+//                                   DNS name. Unset locally, where there's none.
+import { EC2Client } from '@aws-sdk/client-ec2';
 import { GAMES } from './games.js';
 import { hostMatch } from './host.js';
 import { DEFAULT_TIMEOUTS } from './lifecycle.js';
 import { log } from './log.js';
 import { MatchTable } from './match-record.js';
+import { findOriginHost } from './origin.js';
 
 function requireEnv(name) {
     const value = process.env[name];
@@ -44,9 +48,10 @@ function secondsEnv(name, defaultMs = undefined) {
 
 log('STARTING');
 const matchID = requireEnv('MATCH_ID');
+const region = process.env.AWS_REGION ?? 'us-east-1';
 const table = new MatchTable({
     tableName: requireEnv('MATCHES_TABLE'),
-    region: process.env.AWS_REGION ?? 'us-east-1',
+    region,
     endpoint: process.env.DYNAMODB_ENDPOINT_URL || undefined,
 });
 const timeouts = {
@@ -77,10 +82,17 @@ process.on('SIGINT', onStopSignal);
 
 let hosted;
 try {
-    hosted = await hostMatch({ matchID, table, games: GAMES, port: Number(process.env.PORT ?? 8000), timeouts, exit: code => process.exit(code) });
+    const originHost = await findOriginHost({
+        metadataUri: process.env.ECS_CONTAINER_METADATA_URI_V4,
+        ec2: new EC2Client({ region }),
+    });
+    log(`ORIGIN ${originHost ?? '(none: not on Fargate)'}`);
+    hosted = await hostMatch({ matchID, table, games: GAMES, port: Number(process.env.PORT ?? 8000), originHost, timeouts, exit: code => process.exit(code) });
 } catch (err) {
-    // Exiting stops the task; the task-state Lambda will mark the match ABORTED.
+    // Nobody can connect, so the match is over. Exiting stops the task. If
+    // this write fails too, the reaper marks the match ABORTED later.
     log(`FAILED ${err.message}`);
+    await table.setStatus(matchID, 'ABORTED').catch(writeErr => log(`COULDN'T MARK ABORTED ${writeErr.message}`));
     process.exit(1);
 }
 

@@ -77,6 +77,21 @@ resource "aws_iam_role_policy" "task_matches" {
   })
 }
 
+# The game server looks up its own public DNS name at startup (T11,
+# game-server/src/origin.js). Describe actions can't be limited to resources.
+resource "aws_iam_role_policy" "task_find_origin" {
+  name = "find-own-origin"
+  role = aws_iam_role.task.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "ec2:DescribeNetworkInterfaces"
+      Resource = "*"
+    }]
+  })
+}
+
 resource "aws_ecs_task_definition" "game_server" {
   family                   = local.name
   requires_compatibilities = ["FARGATE"]

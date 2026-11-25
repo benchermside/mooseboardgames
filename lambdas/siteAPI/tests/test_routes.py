@@ -57,13 +57,17 @@ def test_create_open_game(dynamodb):
 class FakeECS:
     """Stands in for the boto3 ECS client, recording run_task calls."""
 
-    def __init__(self, response=None, error=None):
+    def __init__(self, response=None, error=None, on_run=None):
         self.calls = []
         self.response = response or {"tasks": [{"taskArn": "arn:task/1"}], "failures": []}
         self.error = error
+        # Called with run_task's arguments, to act out what happens meanwhile.
+        self.on_run = on_run
 
     def run_task(self, **kwargs):
         self.calls.append(kwargs)
+        if self.on_run:
+            self.on_run(kwargs)
         if self.error:
             raise self.error
         return self.response
@@ -126,6 +130,24 @@ def test_create_open_game_writes_the_match_and_launches_its_server(dynamodb, lau
         "environment": [{"name": "MATCH_ID", "value": match_id}],
     }]
     assert run["tags"] == [{"key": "match_id", "value": match_id}]
+
+
+def test_a_server_that_is_ready_first_stays_ready(dynamodb, launching):
+    def server_marks_ready(run):
+        dynamodb.update_item(
+            TableName=MATCHES_TABLE_NAME,
+            Key={"match_id": {"S": run["clientToken"]}},
+            UpdateExpression="SET #status = :ready",
+            ExpressionAttributeNames={"#status": "status"},
+            ExpressionAttributeValues={":ready": {"S": "READY"}},
+        )
+
+    launching(FakeECS(on_run=server_marks_ready))
+    result = _create_ur_game()
+    assert result["statusCode"] == 200
+    match = _match(dynamodb, json.loads(result["body"])["open_game_id"])
+    assert match["status"] == {"S": "READY"}
+    assert match["task_arn"] == {"S": "arn:task/1"}
 
 
 def test_without_launch_settings_the_match_is_created_but_not_launched(dynamodb):

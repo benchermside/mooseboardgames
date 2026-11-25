@@ -42,17 +42,21 @@ export function sampleRecord(overrides = {}) {
 export class FakeMatchTable {
     constructor(records = {}) {
         this.records = records;
-        // Lets a test change the record between load() and markListening().
-        this.beforeMarkListening = () => {};
+        // Lets a test change the record between load() and markReady().
+        this.beforeMarkReady = () => {};
     }
 
     async load(matchID) {
         return this.records[matchID] && structuredClone(this.records[matchID]);
     }
 
-    async markListening(matchID, { expiresAt }) {
-        this.beforeMarkListening();
-        return this.#updateUnlessOver(matchID, { listening: true, expires_at: expiresAt.toISOString() });
+    async markReady(matchID, { expiresAt, originHost }) {
+        this.beforeMarkReady();
+        const values = { status: 'READY', listening: true, expires_at: expiresAt.toISOString() };
+        if (originHost !== undefined) {
+            values.origin_host = originHost;
+        }
+        return this.#updateUnlessOver(matchID, values);
     }
 
     async setStatus(matchID, status, { result } = {}) {

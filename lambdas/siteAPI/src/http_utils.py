@@ -8,7 +8,7 @@ from db import get_connection, DDB_dict_to_json
 SESSION_TABLE_NAME = "mooseboardgames-session-dev"
 
 # Name of the cookie the browser sends. Its value is a session_id,
-# e.g. "Cookie: cookie_id=s_abc123".
+# e.g. "Cookie: session=s_abc123".
 COOKIE_NAME = "session"
 
 

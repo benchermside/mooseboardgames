@@ -85,14 +85,15 @@ export class MatchTable {
 
     /**
      * Update the record, but only if it exists and the match hasn't ended.
-     * Returns false, without writing, otherwise.
+     * Returns false, without writing, otherwise. Undefined values are skipped.
      */
     async #updateUnlessOver(matchID, values) {
         const now = new Date().toISOString();
         const names = {};
         const exprValues = { ':now': now };
         const sets = ['updated_at = :now'];
-        for (const [i, [attribute, value]] of Object.entries(values).entries()) {
+        const defined = Object.entries(values).filter(([, value]) => value !== undefined);
+        for (const [i, [attribute, value]] of defined.entries()) {
             names[`#a${i}`] = attribute;
             exprValues[`:v${i}`] = value;
             sets.push(`#a${i} = :v${i}`);
@@ -132,18 +133,23 @@ export class MatchTable {
     }
 
     /**
-     * Record that the server is up. Returns false, without writing, if the
-     * record is gone or the match has already ended (for example, the lobby
-     * cancelled it while the task was starting).
+     * Record that the server is up and players can connect: status READY.
+     * Returns false, without writing, if the record is gone or the match has
+     * already ended (for example, the lobby cancelled it while the task was
+     * starting).
      *
      * expiresAt: a Date, the end of the match's maximum lifetime.
+     * originHost: this task's public DNS name, where the router sends players.
+     *   Undefined when running locally, where there's no router.
      */
-    async markListening(matchID, { expiresAt }) {
+    async markReady(matchID, { expiresAt, originHost }) {
         return this.#updateUnlessOver(matchID, {
+            status: 'READY',
             listening: true,
             listening_at: new Date().toISOString(),
             // When the reaper may stop the task, whatever the match's status.
             expires_at: expiresAt.toISOString(),
+            origin_host: originHost,
         });
     }
 

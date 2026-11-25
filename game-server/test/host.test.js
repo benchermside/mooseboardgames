@@ -14,8 +14,10 @@ afterEach(() => {
     }
 });
 
+const ORIGIN_HOST = 'ec2-1-2-3-4.compute-1.amazonaws.com';
+
 async function host(record = sampleRecord(), table = new FakeMatchTable({ [MATCH_ID]: record })) {
-    const hosted = await hostMatch({ matchID: MATCH_ID, table, games: TEST_GAMES, port: 0, exit: exitStub(), startedAt: Date.now() });
+    const hosted = await hostMatch({ matchID: MATCH_ID, table, games: TEST_GAMES, port: 0, originHost: ORIGIN_HOST, exit: exitStub(), startedAt: Date.now() });
     if (hosted.outcome === 'listening') {
         // Stops the server and the lifecycle's timers.
         cleanups.push(() => hosted.lifecycle.onStopSignal());
@@ -34,10 +36,12 @@ async function serverCount(storage) {
     return state.G.count;
 }
 
-test('hosts the match in the record and marks it listening', async () => {
+test('hosts the match in the record and marks it READY with its origin', async () => {
     const { hosted, table } = await host();
     assert.equal(hosted.outcome, 'listening');
     assert.equal(table.records[MATCH_ID].listening, true);
+    assert.equal(table.records[MATCH_ID].status, 'READY');
+    assert.equal(table.records[MATCH_ID].origin_host, ORIGIN_HOST);
 
     const player0 = connect(hosted.port, { playerID: '0', credentials: CREDENTIALS[0] });
     assert.ok(await waitFor(() => isSynced(player0)), 'player 0 syncs');
@@ -83,7 +87,7 @@ test('a match that already ended is not hosted', async () => {
 
 test('a match cancelled while the server starts is not hosted', async () => {
     const table = new FakeMatchTable({ [MATCH_ID]: sampleRecord() });
-    table.beforeMarkListening = () => {
+    table.beforeMarkReady = () => {
         table.records[MATCH_ID].status = 'CANCELLED';
     };
     const { hosted } = await host(undefined, table);

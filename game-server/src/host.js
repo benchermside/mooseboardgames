@@ -1,5 +1,5 @@
-// Design T6: load the match record, start the server for it, and tell the
-// rest of the system it's listening. Then hand over to the lifecycle (T7, T8),
+// Design T6 and T11: load the match record, start the server for it, and mark
+// the match READY with this task's address, so the router can send players. Then hand over to the lifecycle (T7, T8),
 // which decides when the match is over.
 import { MatchLifecycle } from './lifecycle.js';
 import { log } from './log.js';
@@ -7,7 +7,8 @@ import { parseMatchRecord, TERMINAL_STATUSES } from './match-record.js';
 import { startServer } from './server.js';
 
 /**
- * table: something with load, markListening and setStatus, normally a MatchTable.
+ * table: something with load, markReady and setStatus, normally a MatchTable.
+ * originHost: this task's public DNS name (origin.js); undefined locally.
  * timeouts: overrides for lifecycle.js's DEFAULT_TIMEOUTS. idleMs and
  *   maxLifetimeMs default to the game's own (games.js).
  * exit(code): called when the match is over and the server has stopped.
@@ -19,7 +20,7 @@ import { startServer } from './server.js';
  *                                         nothing is left running.
  * Throws if the record is missing or malformed, or DynamoDB fails.
  */
-export async function hostMatch({ matchID, table, games, port, timeouts, exit, startedAt = performance.timeOrigin }) {
+export async function hostMatch({ matchID, table, games, port, originHost, timeouts, exit, startedAt = performance.timeOrigin }) {
     const item = await table.load(matchID);
     if (item !== undefined && TERMINAL_STATUSES.includes(item.status)) {
         return { outcome: 'already-over', status: item.status };
@@ -35,7 +36,7 @@ export async function hostMatch({ matchID, table, games, port, timeouts, exit, s
     const expiresAt = new Date(startedAt + matchTimeouts.maxLifetimeMs);
 
     // Checked again here, because the lobby can cancel while we start up.
-    if (!(await table.markListening(matchID, { expiresAt }))) {
+    if (!(await table.markReady(matchID, { expiresAt, originHost }))) {
         server.stop();
         const latest = await table.load(matchID);
         return { outcome: 'already-over', status: latest?.status ?? 'DELETED' };

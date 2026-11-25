@@ -4,7 +4,7 @@ import time
 import pytest
 
 from db import DDB_dict_to_json
-from http_utils import SESSION_TABLE_NAME, Unauthorized, authenticate_request
+from http_utils import COOKIE_NAME, SESSION_TABLE_NAME, Unauthorized, authenticate_request
 from lambda_function import lambda_handler
 from routes.account_lambda import USERS_TABLE_NAME, USERNAMES_TABLE_NAME
 from routes.account_util import hash_password, SESSION_DURATION_SECONDS
@@ -26,7 +26,7 @@ def test_create_user_writes_user_and_username(dynamodb):
     result = _signup()
     assert result["statusCode"] == 200
     user_id = json.loads(result["body"])["user_id"]
-    assert result["headers"]["Set-Cookie"].startswith("cookie_id=")
+    assert result["headers"]["Set-Cookie"].startswith(f"{COOKIE_NAME}=")
 
     item = dynamodb.get_item(TableName=USERS_TABLE_NAME, Key={"user_id": {"S": user_id}})["Item"]
     user = DDB_dict_to_json(item)
@@ -80,7 +80,7 @@ def test_login_with_correct_password():
     result = _login()
     assert result["statusCode"] == 200
     assert json.loads(result["body"])["user_id"] == user_id
-    assert result["headers"]["Set-Cookie"].startswith("cookie_id=")
+    assert result["headers"]["Set-Cookie"].startswith(f"{COOKIE_NAME}=")
 
 
 def test_login_with_wrong_password_returns_401():
@@ -109,7 +109,7 @@ def _session_id(result: dict) -> str:
     """Pull the session_id out of a response's Set-Cookie header."""
     first_part = result["headers"]["Set-Cookie"].split(";")[0]
     name, _, value = first_part.partition("=")
-    assert name == "cookie_id"
+    assert name == COOKIE_NAME
     return value
 
 
@@ -139,7 +139,7 @@ def test_each_login_gets_a_new_session():
 def test_session_cookie_authenticates():
     result = _signup()
     user_id = json.loads(result["body"])["user_id"]
-    event = {"cookies": [f"cookie_id={_session_id(result)}"]}
+    event = {"cookies": [f"{COOKIE_NAME}={_session_id(result)}"]}
     assert authenticate_request(event) == user_id
 
 
@@ -152,9 +152,9 @@ def test_expired_session_rejected(dynamodb):
         ExpressionAttributeValues={":t": {"N": str(int(time.time()) - 1)}},
     )
     with pytest.raises(Unauthorized):
-        authenticate_request({"cookies": [f"cookie_id={session_id}"]})
+        authenticate_request({"cookies": [f"{COOKIE_NAME}={session_id}"]})
 
 
 def test_unknown_session_rejected():
     with pytest.raises(Unauthorized):
-        authenticate_request({"cookies": ["cookie_id=s_nonexistent"]})
+        authenticate_request({"cookies": [f"{COOKIE_NAME}=s_nonexistent"]})

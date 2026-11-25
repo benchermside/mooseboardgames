@@ -44,7 +44,7 @@ These are choices that seemed to have a clear best answer; each is easy to chang
 - **Lobby backend (existing, Lambda + DynamoDB).** Creates the match record and issues per-seat player credentials. Additions: it launches the task and exposes match status to clients.
 - **Match table (DynamoDB).** A separate `matches` table, one record per match. [match-record.md](match-record.md) lists every attribute and status, and who writes and reads each.
 - **Game server container (Fargate).** A boardgame.io server hosting exactly one match.
-- **Orchestration Lambdas.** Task-state handler and reaper. (Launching and cancelling are done by the lobby itself.)
+- **Orchestration Lambda.** Just the reaper. (Launching and cancelling are done by the lobby; the container records its own address and `READY`.)
 - **CloudFront `/m/*` behavior plus Lambda@Edge router.** Terminates TLS and routes each connection to the right task.
 
 ### Match lifecycle (state machine)
@@ -61,11 +61,10 @@ The lobby never shows a connect URL to players until the match is `READY`.
 
 1. A player creates an open game in the lobby. The lobby writes a `CREATED` record containing the game name, seat count, setup data, and per-seat credentials.
 2. In the same request, the lobby calls `RunTask`. It passes only `MATCH_ID` as a container environment override, and tags the task with the match ID. It records the task ARN and sets status to `LAUNCHING`.
-3. The container boots and reads the match record from DynamoDB. It seeds the match into boardgame.io's in-memory storage under the lobby-assigned match ID, starts the server, and sets `listening = true` on the match record.
-4. Independently, an EventBridge rule on ECS Task State Change (`RUNNING`) invokes the task-state Lambda. That Lambda looks up the task's ENI, gets its public DNS name (D6), and writes it to the match record as the origin host.
-   - This has to happen outside the container: the ECS task metadata endpoint exposes only the private IP.
-   - It can't be replaced by a Lambda health-check either, because the security group admits only CloudFront.
-5. When both `listening` and the origin host are set, the lobby marks the match `READY` and pushes the connect URL to the waiting players. Whichever write lands second triggers this, via a conditional update or a DynamoDB Stream.
+3. The container boots and reads the match record from DynamoDB. It seeds the match into boardgame.io's in-memory storage under the lobby-assigned match ID and starts the server.
+4. The container finds its own public DNS name (D6). The ECS task metadata endpoint gives only its private IP and MAC address, so it looks those up with `ec2:DescribeNetworkInterfaces` ([origin.js](../game-server/src/origin.js)). Spike S2 showed the name exists before the task reaches `RUNNING`.
+5. In one update, the container sets `origin_host`, `listening`, `expires_at` and status `READY`. The lobby shows waiting players the connect URL once the match is `READY`.
+   - The lobby's own `LAUNCHING` write only applies while the match is still `CREATED`, so it can't undo a quick `READY`.
 
 ### Connection path
 
@@ -108,11 +107,11 @@ Because the game server is the task's only essential container, its exit stops t
 
 **SIGTERM handler.** `StopTask` (used by lobby cancel and the reaper) sends SIGTERM. The handler records a terminal status if none is set yet, then exits.
 
-**Task-state Lambda on `STOPPED`.**
-- If the match record has no terminal status, mark it `ABORTED` (this is the crash path, per D4).
-- Clear the origin host so the router stops routing to the old task.
+**Startup failure.** If the container can't start serving (bad record, no public DNS name), it marks the match `ABORTED` and exits.
 
-**Reaper (EventBridge schedule, every 15 minutes).** Stops any task tagged with a match ID whose match record is past its `expires_at` (the game's maximum lifetime, written by the container), or is already terminal. A task with no `expires_at` (it never got as far as listening) is stopped after a fixed fallback, such as 1 hour from its start. This catches hung processes and anything the other paths miss.
+**Reaper (EventBridge schedule, every 15 minutes).** This catches hung processes, crashes, and anything the other paths miss:
+- **Stop tasks that should be gone.** Stops any task tagged with a match ID whose match record is past its `expires_at` (the game's maximum lifetime, written by the container), or is already terminal. A task with no `expires_at` (it never got as far as listening) is stopped after a fixed fallback, such as 1 hour from its start.
+- **Crashes (per D4).** For each match that isn't terminal but whose task has stopped, mark it `ABORTED` and clear `origin_host`, so the router stops routing to the old task.
 
 ### Client
 
@@ -180,12 +179,12 @@ There is no ALB, no NAT gateway, and no provisioned capacity, so idle cost is a 
   - *If `RunTask` fails, the match becomes `ABORTED` with the reason in `launch_error`, no open game is created, and the request returns 503.*
   - *Tasks are tagged `match_id` and started by `lobby`. The match ID is also `RunTask`'s idempotency token.*
   - *Locally (`just dev`), launching isn't configured, so the match record is written but no task is started.*
-- **T11.** Task-state Lambda with an EventBridge rule:
-  - On `RUNNING`: resolve the ENI's public DNS name and write the origin host.
-  - On `STOPPED`: set `ABORTED` if no terminal status exists, and clear the origin host.
-- **T12.** `READY` transition and lobby notification to waiting players.
+- **T11.** Record the task's origin host and set `READY`. *Built, without a task-state Lambda: the container finds its own public DNS name at startup ([origin.js](../game-server/src/origin.js)) and writes it with `listening` and `READY` in one update.*
+  - *If startup fails, the container marks the match `ABORTED` itself. Crashes after that are left to the reaper (T14).*
+  - *Running locally, there's no public name, so `origin_host` isn't set; the match still becomes `READY`.*
+- **T12.** Lobby tells waiting players the match is `READY`, with the connect URL and each player's own credential.
 - **T13.** Lobby cancel path: `StopTask` and set `CANCELLED`.
-- **T14.** Reaper Lambda on an EventBridge schedule.
+- **T14.** Reaper Lambda on an EventBridge schedule: stops overdue tasks, and marks matches whose task has stopped `ABORTED`.
 
 ### Phase 4 — Client
 
