@@ -30,10 +30,19 @@ svg.board {
 
     .space.fox {
         fill: red;
+        r: 0.4;
     }
 
     .space.sheep {
         fill: yellow;
+    }
+
+    .space.moveStart {
+        fill: purple;
+    }
+
+    .space.target {
+        fill: greenyellow;
     }
 
     .edge {
