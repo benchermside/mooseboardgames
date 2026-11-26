@@ -18,3 +18,26 @@ table.board {
         background-color: yellow;
     }
 }
+
+svg.board {
+    width: 400px; /* FIXME: I should avoid hard-coding a specific pixel width, right? */
+
+    .space {
+        fill: aliceblue;
+        stroke: #555555;
+        stroke-width: 0.05;
+    }
+
+    .space.fox {
+        fill: red;
+    }
+
+    .space.sheep {
+        fill: yellow;
+    }
+
+    .edge {
+        stroke: #555555;
+        stroke-width: 0.05;
+    }
+}
