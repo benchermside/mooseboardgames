@@ -26,28 +26,24 @@ class StarveTheFoxClient {
 
     /** Called once at the start to set up the board. */
     createBoard() {
-        const spaces = [];
         const lines = [];
+        for (const connection of connections) {
+            const r1 = connection[0];
+            const c1 = connection[1];
+            const r2 = connection[2];
+            const c2 = connection[3];
+            lines.push(
+                `<line class="edge" x1="${c1}.5" y1="${r1}.5" x2="${c2}.5" y2="${r2}.5"/>`
+            );
+        }
+
+        const spaces = [];
         for (let row = 0; row < 7; row++) {
             for (let col = 0; col < 7; col++) {
                 if (isValidSpace([row, col])) {
                     spaces.push(
                         `<circle class="space" data-id="${row}${col}" cx="${col}.5" cy="${row}.5" r="0.2"/>`
                     );
-                    // for each point, consider 4 lines we might draw from it:
-                    let possibleP2 = [
-                        [row, col + 1],     // line to right?
-                        [row + 1, col],     // line down?
-                        [row + 1, col + 1], // line down-right diagonal?
-                        [row - 1, col + 1], // line up-right diagonal?
-                    ];
-                    possibleP2.forEach(([r2,c2]) => {
-                        if (connected([row,col], [r2,c2])) {
-                            lines.push(
-                                `<line class="edge" x1="${col}.5" y1="${row}.5" x2="${c2}.5" y2="${r2}.5"/>`
-                            );
-                        }
-                    })
                 }
             }
         }
@@ -72,33 +68,40 @@ class StarveTheFoxClient {
 }
 
 
+/** Returns true if this is the [x,y] address of a valid space. */
 function isValidSpace([r,c]) {
     return r >= 0 && r < 7 && c >= 0 && c < 7 &&
         ((r > 1 && r < 5) || (c > 1 && c < 5));
 }
 
+/** Returns true if these two [x,y] spaces both exist and are connected. */
 function connected([r1,c1], [r2,c2]) {
-    if (isValidSpace([r1,c1]) && isValidSpace([r2,c2])) {
-        // Horizontal Lines:
-        if ((r1 === r2) && ((c2 - c1) === 1 || ((c2 - c1) === -1))) {
-            return true;
-        }
-        // Vertical Lines:
-        if ((c1 === c2) && ((r2 - r1) === 1 || ((r2 - r1) === -1))) {
-            return true;
-        }
-        // Diagonals:
-        if (knownDiagonals.has(`${c1}${r1}${c2}${r2}`)) {
-            return true;
-        }
-        if (knownDiagonals.has(`${c2}${r2}${c1}${r1}`)) {
-            return true;
-        }
+    if (connections.has(`${c1}${r1}${c2}${r2}`)) {
+        return true;
+    }
+    if (connections.has(`${c2}${r2}${c1}${r1}`)) {
+        return true;
     }
     return false;
 }
 
-const knownDiagonals = new Set([
+const connections = new Set([
+    // horizontal
+    "2030", "3040",
+    "2131", "3141",
+    "0212", "1222", "2232", "3242", "4252", "5262",
+    "0313", "1323", "2333", "3343", "4353", "5363",
+    "0414", "1424", "2434", "3444", "4454", "5464",
+    "2535", "3545",
+    "2636", "3646",
+    // vertical
+    "0203", "0304",
+    "1213", "1314",
+    "2021", "2122", "2223", "2324", "2425", "2526",
+    "3031", "3132", "3233", "3334", "3435", "3536",
+    "4041", "4142", "4243", "4344", "4445", "4546",
+    "5253", "5354",
+    "6263", "6364",
     // down-right diagonals
     "2031", "3142", "4253", "5364",
     "2233", "3344",
