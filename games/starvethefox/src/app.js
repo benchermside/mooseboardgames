@@ -82,32 +82,50 @@ function connected([r1,c1], [r2,c2]) {
     return false;
 }
 
-const connections = new Set([
-    // horizontal
-    "2030", "3040",
-    "2131", "3141",
-    "0212", "1222", "2232", "3242", "4252", "5262",
-    "0313", "1323", "2333", "3343", "4353", "5363",
-    "0414", "1424", "2434", "3444", "4454", "5464",
-    "2535", "3545",
-    "2636", "3646",
-    // vertical
-    "0203", "0304",
-    "1213", "1314",
-    "2021", "2122", "2223", "2324", "2425", "2526",
-    "3031", "3132", "3233", "3334", "3435", "3536",
-    "4041", "4142", "4243", "4344", "4445", "4546",
-    "5253", "5354",
-    "6263", "6364",
-    // down-right diagonals
-    "2031", "3142", "4253", "5364",
-    "2233", "3344",
-    "0213", "1324", "2435", "3546",
-    // up-right diagonals
-    "0413", "1322", "2231", "3140",
-    "2433", "3342",
-    "6253", "5344", "4435", "3526",
-]);
+/**
+ * The four directions a connection can run in, as [dx, dy] steps.
+ *
+ * We only need "forward" directions (right, down, down-right, up-right).
+ * Each connection is stored once, from its first endpoint to its second,
+ * and connected() checks both orders.
+ */
+const DIRECTIONS = [
+    { dx: 1, dy:  0, diagonal: false },  // horizontal
+    { dx: 0, dy:  1, diagonal: false },  // vertical
+    { dx: 1, dy:  1, diagonal: true  },  // down-right diagonal
+    { dx: 1, dy: -1, diagonal: true  },  // up-right diagonal
+];
+
+/**
+ * Builds the set of allowed connections between neighboring spaces.
+ *
+ * Each connection is a 4-character string "x1y1x2y2" (column, row, column, row).
+ *
+ * The rules are:
+ *   - Any two spaces next to each other horizontally or vertically are connected.
+ *   - Diagonal connections only run through spaces where (x + y) is even.
+ *     Every space on a diagonal line has the same parity of (x + y), so this
+ *     picks out every other diagonal line. That gives the usual
+ *     Fox-and-Geese board pattern.
+ */
+function buildConnections() {
+    const result = new Set();
+    for (let y = 0; y < 7; y++) {
+        for (let x = 0; x < 7; x++) {
+            if (!isValidSpace([y, x])) continue;
+            for (const { dx, dy, diagonal } of DIRECTIONS) {
+                const x2 = x + dx;
+                const y2 = y + dy;
+                if (!isValidSpace([y2, x2])) continue;
+                if (diagonal && (x + y) % 2 !== 0) continue;
+                result.add(`${x}${y}${x2}${y2}`);
+            }
+        }
+    }
+    return result;
+}
+
+const connections = buildConnections();
 
 const appElement = document.getElementById('app');
 const app = new StarveTheFoxClient(appElement, { playerID: playerID });
