@@ -26,16 +26,13 @@ class StarveTheFoxClient {
 
     /** Called once at the start to set up the board. */
     createBoard() {
-        const lines = [];
-        for (const connection of connections) {
+        const lines = Array.from(connections, connection => {
             const r1 = connection[0];
             const c1 = connection[1];
             const r2 = connection[2];
             const c2 = connection[3];
-            lines.push(
-                `<line class="edge" x1="${c1}.5" y1="${r1}.5" x2="${c2}.5" y2="${r2}.5"/>`
-            );
-        }
+            return `<line class="edge" x1="${c1}.5" y1="${r1}.5" x2="${c2}.5" y2="${r2}.5"/>`;
+        });
 
         const spaces = [];
         for (let row = 0; row < 7; row++) {
