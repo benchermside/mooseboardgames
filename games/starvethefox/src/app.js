@@ -26,7 +26,7 @@ class StarveTheFoxClient {
 
     /** Called once at the start to set up the board. */
     createBoard() {
-        const lines = Array.from(connections, connection => {
+        const lines = Array.from(forwardConnections, connection => {
             const c1 = connection[0];
             const r1 = connection[1];
             const c2 = connection[2];
@@ -72,22 +72,16 @@ function isValidSpace([c,r]) {
 }
 
 /** Returns true if these two [x,y] spaces both exist and are connected. */
-function connected([r1,c1], [r2,c2]) {
-    if (connections.has(`${c1}${r1}${c2}${r2}`)) {
-        return true;
-    }
-    if (connections.has(`${c2}${r2}${c1}${r1}`)) {
-        return true;
-    }
-    return false;
+function connected([c1,r1], [c2,r2]) {
+    return allConnections.has(`${c1}${r1}${c2}${r2}`);
 }
 
 /**
  * The four directions a connection can run in, as [dx, dy] steps.
  *
- * We only need "forward" directions (right, down, down-right, up-right).
- * Each connection is stored once, from its first endpoint to its second,
- * and connected() checks both orders.
+ * We only need "forward" directions (right, down, down-right, up-right)
+ * to create forwardConnections; the opposite direction in allConnections
+ * will be created by swapping the ends.
  */
 const DIRECTIONS = [
     { dx: 1, dy:  0, diagonal: false },  // horizontal
@@ -108,7 +102,7 @@ const DIRECTIONS = [
  *     picks out every other diagonal line. That gives the usual
  *     Fox-and-Geese board pattern.
  */
-function buildConnections() {
+function buildForwardConnections() {
     const result = new Set();
     for (let y = 0; y < 7; y++) {
         for (let x = 0; x < 7; x++) {
@@ -124,8 +118,24 @@ function buildConnections() {
     }
     return result;
 }
+const forwardConnections = buildForwardConnections();
 
-const connections = buildConnections();
+/**
+ * Builds the constant allConnections. This contains connections in both directions, and it
+ * is built from forwardConnections.
+ */
+function buildAllConnections(forwardConnections) {
+    const result = new Set();
+    for (const connection of forwardConnections) {
+        // Reversing a connection is just swapping the first and second halve.
+        const reversed = connection.slice(2) + connection.slice(0, 2);
+        result.add(connection);
+        result.add(reversed);
+    }
+    return result;
+}
+
+const allConnections = buildAllConnections(forwardConnections);
 
 const appElement = document.getElementById('app');
 const app = new StarveTheFoxClient(appElement, { playerID: playerID });
