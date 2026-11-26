@@ -22,7 +22,7 @@ export const StarveTheFox = {
     moves: {
         /* Remove a piece that's currently on a space. */
         removePiece: ({G, playerID}, id) => {
-            if (G.board[id] in ["F","S"]) {
+            if (!["F","S"].includes(G.board[id])) {
                 return INVALID_MOVE;
             }
             G.board[id] = ".";
