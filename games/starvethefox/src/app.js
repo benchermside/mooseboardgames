@@ -27,19 +27,19 @@ class StarveTheFoxClient {
     /** Called once at the start to set up the board. */
     createBoard() {
         const lines = Array.from(connections, connection => {
-            const r1 = connection[0];
-            const c1 = connection[1];
-            const r2 = connection[2];
-            const c2 = connection[3];
+            const c1 = connection[0];
+            const r1 = connection[1];
+            const c2 = connection[2];
+            const r2 = connection[3];
             return `<line class="edge" x1="${c1}.5" y1="${r1}.5" x2="${c2}.5" y2="${r2}.5"/>`;
         });
 
         const spaces = [];
         for (let row = 0; row < 7; row++) {
             for (let col = 0; col < 7; col++) {
-                if (isValidSpace([row, col])) {
+                if (isValidSpace([col, row])) {
                     spaces.push(
-                        `<circle class="space" data-id="${row}${col}" cx="${col}.5" cy="${row}.5" r="0.2"/>`
+                        `<circle class="space" data-id="${col}${row}" cx="${col}.5" cy="${row}.5" r="0.2"/>`
                     );
                 }
             }
@@ -55,8 +55,8 @@ class StarveTheFoxClient {
         }
         const spaces = this.rootElem.querySelectorAll(".space");
         spaces.forEach(space => {
-            const row = Number((space.dataset.id)[0]);
-            const col = Number((space.dataset.id)[1]);
+            const col = Number((space.dataset.id)[0]);
+            const row = Number((space.dataset.id)[1]);
             const contentCode = state.G.board[row * 7 + col];
             space.classList.toggle("sheep", contentCode === "S");
             space.classList.toggle("fox", contentCode === "F");
@@ -66,7 +66,7 @@ class StarveTheFoxClient {
 
 
 /** Returns true if this is the [x,y] address of a valid space. */
-function isValidSpace([r,c]) {
+function isValidSpace([c,r]) {
     return r >= 0 && r < 7 && c >= 0 && c < 7 &&
         ((r > 1 && r < 5) || (c > 1 && c < 5));
 }
@@ -112,11 +112,11 @@ function buildConnections() {
     const result = new Set();
     for (let y = 0; y < 7; y++) {
         for (let x = 0; x < 7; x++) {
-            if (!isValidSpace([y, x])) continue;
+            if (!isValidSpace([x, y])) continue;
             for (const { dx, dy, diagonal } of DIRECTIONS) {
                 const x2 = x + dx;
                 const y2 = y + dy;
-                if (!isValidSpace([y2, x2])) continue;
+                if (!isValidSpace([x2, y2])) continue;
                 if (diagonal && (x + y) % 2 !== 0) continue;
                 result.add(`${x}${y}${x2}${y2}`);
             }
