@@ -1,5 +1,5 @@
 import {Client} from 'boardgame.io/client';
-import {StarveTheFox, spaceIdMap, forwardConnections, isValidTarget} from './game';
+import {StarveTheFox, allSpaces, forwardConnections, isValidTarget} from './game';
 import {SocketIO} from 'boardgame.io/multiplayer'
 
 // http://localhost:1235/?player=0   <-- the "fox".
@@ -34,10 +34,10 @@ class StarveTheFoxClient {
             return `<line class="edge" x1="${c1}.5" y1="${r1}.5" x2="${c2}.5" y2="${r2}.5"/>`;
         });
 
-        const spaces = Array.from(spaceIdMap.values(), value => {
-            let col = value[0];
-            let row = value[1];
-            return `<circle class="space" data-id="${col}${row}" cx="${col}.5" cy="${row}.5" r="0.2"/>`
+        const spaces = Array.from(allSpaces, spaceId => {
+            let col = spaceId[0];
+            let row = spaceId[1];
+            return `<circle class="space" data-id="${spaceId}" cx="${col}.5" cy="${row}.5" r="0.2"/>`
         });
 
         this.rootElem.innerHTML = `<svg class="board" viewBox="0 0 7 7">${lines.join("")}${spaces.join("")}</svg>`
@@ -50,9 +50,7 @@ class StarveTheFoxClient {
         }
         const spaces = this.rootElem.querySelectorAll(".space");
         spaces.forEach(space => {
-            const col = Number((space.dataset.id)[0]);
-            const row = Number((space.dataset.id)[1]);
-            const spaceId = row * 7 + col;
+            const spaceId = space.dataset.id;
             const contentCode = state.G.board[spaceId];
             space.classList.toggle("sheep", contentCode === "S");
             space.classList.toggle("fox", contentCode === "F");
