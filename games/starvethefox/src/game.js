@@ -41,6 +41,7 @@ export const StarveTheFox = {
                     G.prevProgressTurn = ctx.turn;
                 }
                 G.currentMoveStart = null;
+                trappedFoxesDie(G);
                 events.endTurn();
             }
         },
@@ -57,6 +58,46 @@ function pieceCode(playerID) {
 
 /**
  * With board state G and active player playerID, this returns information about
+ * moving from startSpaceId to endSpaceId. It does NOT check whether there is a
+ * piece of the right player on startSpaceId (or, indeed, a piece at all) on the
+ * start space. It returns null if a move from the current playerID from that start
+ * space to the end space would not be legal. If such a move WOULD be legal, this
+ * returns a data structure with two fields: "jumped" which is either null, or is
+ * the spaceId of a place where a piece gets jumped, and "progress" which is true
+ * if a sheep moves forward and false if not.
+ */
+function legalMove(G, playerID, startSpaceId, endSpaceId) {
+    // Sheep and Foxes move differently:
+    if (playerID === "0") { // Fox moving
+        // Must move to empty space
+        if (G.board[endSpaceId] !== ".") {
+            return null;
+        }
+        // Can move to a connected space
+        if (allConnections.has(startSpaceId + endSpaceId)) {
+            return {jumped: null, progress: false};
+        }
+        // Can jump if there's a sheep in the middle
+        const mid = allJumps.get(startSpaceId + endSpaceId);
+        if (mid !== undefined && G.board[mid] === 'S') {
+            return {jumped: mid, progress: false};
+        }
+    } else { // Sheep moving
+        // Must move to empty space
+        if (G.board[endSpaceId] !== ".") {
+            return null;
+        }
+        // Can move to a connected space if it's not backward
+        const upDistance = Number(startSpaceId[1]) - Number(endSpaceId[1]);
+        if (upDistance >= 0 && allConnections.has(G.currentMoveStart + endSpaceId)) {
+            return {jumped: null, progress: upDistance > 0};
+        }
+    }
+    return null;
+}
+
+/**
+ * With board state G and active player playerID, this returns information about
  * moving to spaceId. If such a move would not be legal, this returns null. If
  * such a move IS legal, this returns a data structure with two fields: "jumped"
  * which is either null, or is the spaceId of a place where a piece gets jumped,
@@ -67,35 +108,11 @@ function pieceCode(playerID) {
  * @param spaceId
  */
 function allowedMoveTo(G, playerID, spaceId) {
-    // Nothing is valid if we aren't moving
+    // Nothing is valid if we haven't lifted up a piece
     if (G.currentMoveStart === null) {
         return null;
     }
-    // Cannot move to an occupied space (or an invalid space)
-    if (G.board[spaceId] !== ".") {
-        return null;
-    }
-    // Sheep and Foxes move differently:
-    if (playerID === "0") {
-        // Fox moving
-        // Can move to a connected space
-        if (allConnections.has(G.currentMoveStart + spaceId)) {
-            return {jumped: null, progress: false};
-        }
-        // Can jump if there's a sheep in the middle
-        const mid = allJumps.get(G.currentMoveStart + spaceId);
-        if (mid !== undefined && G.board[mid] === 'S') {
-            return {jumped: mid, progress: false};
-        }
-    } else {
-        // Sheep moving
-        // Can move to a connected space if it's not backward
-        const upDistance = Number(G.currentMoveStart[1]) - Number(spaceId[1]);
-        if (upDistance >= 0 && allConnections.has(G.currentMoveStart + spaceId)) {
-            return {jumped: null, progress: upDistance > 0};
-        }
-    }
-    return null;
+    return legalMove(G, playerID, G.currentMoveStart, spaceId);
 }
 
 /**
@@ -224,3 +241,27 @@ function buildAllJumps() {
 
 // A Map from "{start}{end}" to "space-jumped-over".
 const allJumps = buildAllJumps();
+
+/**
+ * When called, this checks whether each fox can move. If any fox cannot
+ * move, that fox is eliminated from the board.
+ */
+function trappedFoxesDie(G) {
+    let foxesToDie = [];
+    allSpaces.forEach(spaceId1 => {
+        if (G.board[spaceId1] === "F") {
+            let foxCanMove = false; // until we find one
+            allSpaces.forEach(spaceId2 => {
+                if (legalMove(G, "0", spaceId1, spaceId2) !== null) {
+                    foxCanMove = true;
+                }
+            });
+            if (!foxCanMove) {
+                foxesToDie.push(spaceId1);
+            }
+        }
+    });
+    foxesToDie.forEach(spaceId => {
+        G.board[spaceId] = ".";
+    });
+}
