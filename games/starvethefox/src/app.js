@@ -20,8 +20,27 @@ class StarveTheFoxClient {
         this.client.start();
         this.rootElem = rootElem;
         this.createBoard();
-        // FIXME: Need to set call attachListeners()
+        this.attachListeners();
         this.client.subscribe(state => this.update(state));
+    }
+
+    /** Called once at the start to make the spaces clickable. */
+    attachListeners() {
+        const spaces = this.rootElem.querySelectorAll(".space");
+        spaces.forEach(space => {
+            space.onclick = () => {
+                const state = this.client.getState();
+                if (state === null) {
+                    return;
+                }
+                const spaceId = space.dataset.id;
+                if (state.G.currentMoveStart === null) {
+                    this.client.moves.liftPiece(spaceId);
+                } else {
+                    this.client.moves.placePiece(spaceId);
+                }
+            };
+        });
     }
 
     /** Called once at the start to set up the board. */
