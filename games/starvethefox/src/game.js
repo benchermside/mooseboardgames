@@ -30,8 +30,12 @@ export const StarveTheFox = {
                 G.board[spaceId] = pieceCode(playerID);
                 G.currentMoveStart = null;
             }
-            if (isValidTarget(G, spaceId)) { // complete a move
+            const allowedMove = allowedMoveTo(G, playerID, spaceId);
+            if (allowedMove !== null) { // complete a move
                 G.board[spaceId] = pieceCode(playerID);
+                if (allowedMove.jumped !== null) {
+                    G.board[allowedMove.jumped] = ".";
+                }
                 G.currentMoveStart = null;
                 events.endTurn();
             }
@@ -48,26 +52,45 @@ function pieceCode(playerID) {
 }
 
 /**
- * Given the state of the game and a spaceId this returns true if the spaceId
- * is a valid place to move to.
+ * With board state G and active player playerID, this returns information about
+ * moving to spaceId. If such a move would not be legal, this returns null. If
+ * such a move IS legal, this returns a data structure with one field, "jumped"
+ * which is either null, or is the spaceId of a place where a piece gets jumped.
+ *
+ * @param G
+ * @param playerID
+ * @param spaceId
  */
-export function isValidTarget(G, spaceId) {
+function allowedMoveTo(G, playerID, spaceId) {
     // Nothing is valid if we aren't moving
     if (G.currentMoveStart === null) {
-        return false;
+        return null;
     }
     // Cannot move to an occupied space (or an invalid space)
     if (G.board[spaceId] !== ".") {
-        return false;
+        return null;
     }
     // CAN move to adjacent spaces
     if (allConnections.has(G.currentMoveStart + spaceId)) {
-        return true;
+        return {jumped: null};
     }
     // If it's a Fox, can move to a jump location if it's clear and there's a sheep to jump
-    return false; // FIXME: Not handled yet -- it doesn't allow jumps.
+    if (playerID === "0") {
+        const mid = allJumps.get(G.currentMoveStart + spaceId);
+        if (mid !== undefined && G.board[mid] === 'S') {
+            return {jumped: mid};
+        }
+    }
+    return null;
 }
 
+/**
+ * Given the state of the game and a spaceId this returns true if the spaceId
+ * is a valid place to move to.
+ */
+export function isValidTarget(G, playerID, spaceId) {
+    return allowedMoveTo(G, playerID, spaceId) !== null;
+}
 
 /** Function to create the allSpaces constant. */
 function buildAllSpaces() {
@@ -85,11 +108,6 @@ function buildAllSpaces() {
 /** Returns a Set of the valid spaceIds. */
 export const allSpaces = buildAllSpaces();
 
-/** Returns true if this is the "xy" address of a valid space on the board. */
-function isValidSpaceId(spaceId) {
-    return allSpaces.has(spaceId);
-}
-
 /**
  * Creates the object mapping from spaceKey ("xy") to status ("F", "S", ".") for the
  * starting board.
@@ -105,7 +123,9 @@ function buildStartingBoard() {
         "##SSS##";
     const result = {};
     allSpaces.forEach(spaceId => {
-        result[spaceId] = layout[row * 7 + col];
+        const x = Number(spaceId[0]);
+        const y = Number(spaceId[1]);
+        result[spaceId] = layout[y * 7 + x];
     });
     return result;
 }
@@ -145,7 +165,7 @@ function buildForwardConnections() {
             const x2 = x + dx;
             const y2 = y + dy;
             const spaceId2 = `${x2}${y2}`;
-            if (!isValidSpaceId(spaceId2)) continue;
+            if (!allSpaces.has(spaceId2)) continue;
             if (diagonal && (x + y) % 2 !== 0) continue;
             result.add(spaceId + spaceId2);
         }
@@ -170,3 +190,23 @@ function buildAllConnections(forwardConnections) {
 }
 
 const allConnections = buildAllConnections(forwardConnections);
+
+function buildAllJumps() {
+    const result = new Map();
+    allSpaces.forEach(spaceId1 => {
+        const x = Number(spaceId1[0]);
+        const y = Number(spaceId1[1]);
+        for (const { dx, dy, diagonal } of DIRECTIONS) {
+            const spaceId2 = `${(x + 2 * dx)}${(y + 2 * dy)}`;
+            if (!allSpaces.has(spaceId2)) continue;
+            if (diagonal && (x + y) % 2 !== 0) continue;
+            const spaceIdMid = `${x + dx}${y + dy}`;
+            result.set(spaceId1 + spaceId2, spaceIdMid);
+            result.set(spaceId2 + spaceId1, spaceIdMid);
+        }
+    });
+    return result;
+}
+
+// A Map from "{start}{end}" to "space-jumped-over".
+const allJumps = buildAllJumps();

@@ -74,7 +74,7 @@ class StarveTheFoxClient {
             space.classList.toggle("sheep", contentCode === "S");
             space.classList.toggle("fox", contentCode === "F");
             space.classList.toggle("moveStart", state.G.currentMoveStart === spaceId);
-            space.classList.toggle("target", isValidTarget(state.G, spaceId));
+            space.classList.toggle("target", isValidTarget(state.G, state.ctx.currentPlayer, spaceId));
         });
     }
 }
