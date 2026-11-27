@@ -104,14 +104,9 @@ function buildStartingBoard() {
         "##SSS##" +
         "##SSS##";
     const result = {};
-    for (let row = 0; row < 7; row++) {
-        for (let col = 0; col < 7; col++) {
-            const spaceId = `${col}${row}`;
-            if (isValidSpaceId(spaceId)) {
-                result[spaceId] = layout[row * 7 + col];
-            }
-        }
-    }
+    allSpaces.forEach(spaceId => {
+        result[spaceId] = layout[row * 7 + col];
+    });
     return result;
 }
 
@@ -143,20 +138,18 @@ const DIRECTIONS = [
  */
 function buildForwardConnections() {
     const result = new Set();
-    for (let y = 0; y < 7; y++) {
-        for (let x = 0; x < 7; x++) {
-            const spaceId = `${x}${y}`;
-            if (!isValidSpaceId(spaceId)) continue;
-            for (const { dx, dy, diagonal } of DIRECTIONS) {
-                const x2 = x + dx;
-                const y2 = y + dy;
-                const spaceId2 = `${x2}${y2}`;
-                if (!isValidSpaceId(spaceId2)) continue;
-                if (diagonal && (x + y) % 2 !== 0) continue;
-                result.add(spaceId + spaceId2);
-            }
+    allSpaces.forEach(spaceId => {
+        const x = Number(spaceId[0]);
+        const y = Number(spaceId[1]);
+        for (const { dx, dy, diagonal } of DIRECTIONS) {
+            const x2 = x + dx;
+            const y2 = y + dy;
+            const spaceId2 = `${x2}${y2}`;
+            if (!isValidSpaceId(spaceId2)) continue;
+            if (diagonal && (x + y) % 2 !== 0) continue;
+            result.add(spaceId + spaceId2);
         }
-    }
+    });
     return result;
 }
 export const forwardConnections = buildForwardConnections();
