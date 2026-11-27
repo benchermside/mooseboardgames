@@ -8,6 +8,7 @@ export const StarveTheFox = {
     setup: () => ({
         board: buildStartingBoard(), // maps spaceId to "F", "S", or "."
         currentMoveStart: null, // null OR the spaceId where the lifted piece started
+        prevProgressTurn: 0, // number of the last turn in which a sheep made progress
     }),
 
     moves: {
@@ -22,7 +23,7 @@ export const StarveTheFox = {
         },
 
         /** Place down a piece that is currently lifted. */
-        placePiece: ({G, playerID, events}, spaceId) => {
+        placePiece: ({G, ctx, playerID, events}, spaceId) => {
             if (G.currentMoveStart === null) {
                 return INVALID_MOVE;
             }
@@ -35,6 +36,9 @@ export const StarveTheFox = {
                 G.board[spaceId] = pieceCode(playerID);
                 if (allowedMove.jumped !== null) {
                     G.board[allowedMove.jumped] = ".";
+                }
+                if (allowedMove.progress) {
+                    G.prevProgressTurn = ctx.turn;
                 }
                 G.currentMoveStart = null;
                 events.endTurn();
@@ -54,8 +58,9 @@ function pieceCode(playerID) {
 /**
  * With board state G and active player playerID, this returns information about
  * moving to spaceId. If such a move would not be legal, this returns null. If
- * such a move IS legal, this returns a data structure with one field, "jumped"
- * which is either null, or is the spaceId of a place where a piece gets jumped.
+ * such a move IS legal, this returns a data structure with two fields: "jumped"
+ * which is either null, or is the spaceId of a place where a piece gets jumped,
+ * and "progress" which is true if a sheep moves forward and false if not.
  *
  * @param G
  * @param playerID
@@ -70,15 +75,24 @@ function allowedMoveTo(G, playerID, spaceId) {
     if (G.board[spaceId] !== ".") {
         return null;
     }
-    // CAN move to adjacent spaces
-    if (allConnections.has(G.currentMoveStart + spaceId)) {
-        return {jumped: null};
-    }
-    // If it's a Fox, can move to a jump location if it's clear and there's a sheep to jump
+    // Sheep and Foxes move differently:
     if (playerID === "0") {
+        // Fox moving
+        // Can move to a connected space
+        if (allConnections.has(G.currentMoveStart + spaceId)) {
+            return {jumped: null, progress: false};
+        }
+        // Can jump if there's a sheep in the middle
         const mid = allJumps.get(G.currentMoveStart + spaceId);
         if (mid !== undefined && G.board[mid] === 'S') {
-            return {jumped: mid};
+            return {jumped: mid, progress: false};
+        }
+    } else {
+        // Sheep moving
+        // Can move to a connected space if it's not backward
+        const upDistance = Number(G.currentMoveStart[1]) - Number(spaceId[1]);
+        if (upDistance >= 0 && allConnections.has(G.currentMoveStart + spaceId)) {
+            return {jumped: null, progress: upDistance > 0};
         }
     }
     return null;
